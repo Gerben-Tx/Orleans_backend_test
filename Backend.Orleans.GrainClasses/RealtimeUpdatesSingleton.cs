@@ -12,14 +12,10 @@ public sealed class RealtimeUpdatesSingleton {
 
     private RealtimeUpdatesSingleton() {
         Connection = new HubConnectionBuilder()
-            .WithUrl("http://localhost:5202/realtimeUpdatesHub")
+            .WithUrl("http://localhost:5202/realtimeUpdatesHubOrleans")
             .WithAutomaticReconnect()
             .Build();
         OrleansProxy = Connection.ServerProxy<IRealtimeUpdatesOrleans>();
         Connection.StartAsync();
-    }
-
-    public void ClientRegistration(IRealtimeUpdatesClient client) {
-        Connection.ClientRegistration(client);
     }
 }

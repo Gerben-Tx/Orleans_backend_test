@@ -1,9 +1,7 @@
 using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
-using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Client.Godot;
 
@@ -88,7 +86,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     public Task PlayerMovementUpdate(string playerName, int posX, int posY) {
-        GD.Print($"debug HandlePlayerMovementUpdate: {playerName}, {posX}, {posY}");
+        GD.Print($"debug PlayerMovementUpdate: {playerName}, {posX}, {posY}");
 
         CallDeferred(nameof(UpdatePlayer), playerName, posX, posY);
 
@@ -96,7 +94,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     public Task PlayerAddedToChunk(string playerName) {
-        GD.Print($"debug HandlePlayerAddedToChunk: {playerName}");
+        GD.Print($"debug PlayerAddedToChunk: {playerName}");
 
         // TODO: if player already exist, return
 
@@ -107,7 +105,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     public Task PlayerRemovedFromChunk(string playerName) {
-        GD.Print($"debug HandlePlayerRemovedFromChunk: {playerName}");
+        GD.Print($"debug PlayerRemovedFromChunk: {playerName}");
 
         // TODO: if player doesnt exist, return
         CallDeferred(nameof(DeletePlayer), playerName);

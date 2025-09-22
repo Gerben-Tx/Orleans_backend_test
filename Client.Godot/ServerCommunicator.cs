@@ -29,7 +29,7 @@ public partial class ServerCommunicator : Node {
         PlayerName = playerName;
 
         Connection = new HubConnectionBuilder()
-            .WithUrl("http://localhost:5202/realtimeUpdatesHub")
+            .WithUrl("http://localhost:5202/realtimeUpdatesHubClient")
             .WithAutomaticReconnect()
             .Build();
         HubProxy = Connection.ServerProxy<IRealtimeUpdatesHub>();

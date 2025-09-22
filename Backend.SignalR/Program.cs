@@ -21,5 +21,6 @@ builder.Services
 builder.Logging.AddFilter("Backend.SignalR", LogLevel.Debug);
 
 var app = builder.Build();
-app.MapHub<RealtimeUpdatesHub>("/realtimeUpdatesHub");
+app.MapHub<RealtimeUpdatesHubClient>("/realtimeUpdatesHubClient");
+app.MapHub<RealtimeUpdatesHubOrleans>("/realtimeUpdatesHubOrleans");
 await app.RunAsync();
