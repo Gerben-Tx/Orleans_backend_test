@@ -11,6 +11,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     public const int SizeY = 30;
     private readonly string _groupName;
     private readonly IClusterClient _orleansClient;
+    private readonly RealtimeUpdatesSingleton _realtimeUpdatesSingleton;
 
     public WorldChunkGrain(
         ILogger<WorldChunkGrain> logger,
@@ -18,6 +19,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     ) : base(logger) {
         _groupName = this.GetPrimaryKeyString();
         _orleansClient = orleansClient;
+        _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
     }
 
     public async Task AddPlayer(Guid playerGrainKey, string playerName) {
@@ -27,12 +29,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         }
 
         _players.Add(playerGrainKey);
-
-        IAsyncStream<IStreamMessage> stream =
-            this.GetStreamProvider("StreamProvider")
-                .GetStream<IStreamMessage>("MAIN_STREAM", "WORLD_CHUNK");
-        await stream.OnNextAsync(new StreamMessage("PlayerAddedToChunk", playerName,
-            this.GetPrimaryKeyString()));
+        
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(this.GetPrimaryKeyString(), playerName);
     }
 
     public async Task RemovePlayer(Guid playerGrainKey, string playerName) {
@@ -43,11 +41,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Remove(playerGrainKey);
 
-        IAsyncStream<IStreamMessage> stream =
-            this.GetStreamProvider("StreamProvider")
-                .GetStream<IStreamMessage>("MAIN_STREAM", "WORLD_CHUNK");
-        await stream.OnNextAsync(new StreamMessage("PlayerRemovedFromChunk", playerName,
-            this.GetPrimaryKeyString()));
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(this.GetPrimaryKeyString(), playerName);
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);
@@ -57,6 +51,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         foreach (Guid playerKey in _players) {
             players.Add(_orleansClient.GetGrain<IPlayerGrain>(playerKey));
         }
+
         return Task.FromResult(players);
     }
 }

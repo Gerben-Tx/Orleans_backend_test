@@ -15,7 +15,7 @@ builder.Services
             }
         );
     })
-    .AddHostedService<OrleansStreamListenerService>()
+    // .AddHostedService<OrleansStreamListenerService>()
     .AddSignalR();
 // .AddOrleans();
 builder.Logging.AddFilter("Backend.SignalR", LogLevel.Debug);

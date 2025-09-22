@@ -1,5 +1,5 @@
+using Backend.SignalR.SharedContracts;
 using Godot;
-using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Client.Godot;
 
@@ -14,13 +14,11 @@ public partial class Login : Node3D {
         LineEdit playerNameInput = GetNode<LineEdit>("%PlayerNameInput");
         string playerName = playerNameInput.Text;
         
-        HubConnection realtimeUpdates = await ServerCommunicator.ConnectToRealtimeUpdates(playerName);
+        IRealtimeUpdatesHub realtimeUpdates = await ServerCommunicator.Instance.ConnectToRealtimeUpdates(playerName);
         // await _realtimeUpdates.SendCoreAsync("Debug", ["Test from client"]);
 
-        // TODO: Look into strong type signalR client
-        //  see https://kristoffer-strube.dk/post/typed-signalr-clients-making-type-safe-real-time-communication-in-dotnet/#:~:text=Source%20generation%20setup
-
-        await realtimeUpdates.SendCoreAsync("RegisterPlayerGrain", [ServerCommunicator.PlayerName]);
+        // await realtimeUpdates.SendCoreAsync("RegisterPlayerGrain", [ServerCommunicator.PlayerName]);
+        await realtimeUpdates.RegisterPlayerGrain(ServerCommunicator.Instance.PlayerName); // TODO: test if this works
 
         GetTree().ChangeSceneToFile("res://world.tscn");
     }

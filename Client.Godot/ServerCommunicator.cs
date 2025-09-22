@@ -1,19 +1,38 @@
 using System.Threading.Tasks;
+using Backend.SignalR.SharedContracts;
+using Client.Godot.SignalR;
 using Godot;
 using Microsoft.AspNetCore.SignalR.Client;
 
 namespace Client.Godot;
 
 public partial class ServerCommunicator : Node {
-    public static HubConnection Connection;
-    public static string PlayerName;
-    public static async Task<HubConnection> ConnectToRealtimeUpdates(string playerName) {
+    public static ServerCommunicator Instance { get; private set; }
+    private HubConnection Connection { get; set; }
+    public IRealtimeUpdatesHub HubProxy { get; set; }
+    public string PlayerName { get; private set; }
+
+    public override void _Ready() {
+        base._Ready();
+
+        Instance = this;
+    }
+
+    public void ClientRegistration(IRealtimeUpdatesClient client) {
+        // ReSharper disable RedundantTypeArgumentsOfMethod This is necessary for
+        // Microsoft.AspNetCore.SignalR.Client.SourceGenerator to work properly.
+        // We need explicit presence of the generic type argument.
+        Connection.ClientRegistration<IRealtimeUpdatesClient>(client);
+    }
+
+    public async Task<IRealtimeUpdatesHub> ConnectToRealtimeUpdates(string playerName) {
         PlayerName = playerName;
-        
+
         Connection = new HubConnectionBuilder()
             .WithUrl("http://localhost:5202/realtimeUpdatesHub")
             .WithAutomaticReconnect()
             .Build();
+        HubProxy = Connection.ServerProxy<IRealtimeUpdatesHub>();
 
         Connection.Reconnecting += error => {
             GD.Print($"Connection lost to the realtime updates server, reconnecting... ({error})");
@@ -34,21 +53,9 @@ public partial class ServerCommunicator : Node {
 
             return Task.CompletedTask;
         };
-        
-        Connection.On<string>("Debug", message => {
-            GD.Print($"Received debug message: {message}");
-        });
 
-        Connection.On<string>("PlayerAddedToChunk", receivedPlayerName => {
-            GD.Print($"Player '{receivedPlayerName}' entered the chunk");
-        });
-        
-        Connection.On<string>("PlayerRemovedFromChunk", receivedPlayerName => {
-            GD.Print($"Player '{receivedPlayerName}' left the chunk");
-        });
-        
         await Connection.StartAsync();
-        
-        return Connection;
+
+        return HubProxy;
     }
 }

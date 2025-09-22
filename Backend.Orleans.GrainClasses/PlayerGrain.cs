@@ -9,6 +9,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private readonly IPersistentState<PlayerState> _playerState;
     private readonly ILogger<PlayerGrain> _logger;
     private string? _realtimeUpdatesConnectionId;
+    private readonly RealtimeUpdatesSingleton _realtimeUpdatesSingleton;
 
     public PlayerGrain(
         [PersistentState("player", "tableStore")]
@@ -17,6 +18,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     ) : base(logger) {
         _playerState = playerState;
         _logger = logger;
+        _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
     }
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken) {
@@ -87,22 +89,16 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         if (_realtimeUpdatesConnectionId == null) {
             return;
         }
-
-        IAsyncStream<IStreamMessage> stream =
-            this.GetStreamProvider("StreamProvider")
-                .GetStream<IStreamMessage>("MAIN_STREAM", "PLAYER");
-        await stream.OnNextAsync(new StreamMessage("AddToGroupAsync", _realtimeUpdatesConnectionId, groupName));
+        
+        await _realtimeUpdatesSingleton.OrleansProxy.AddToGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
     public async Task LeaveRealtimeUpdatesGroup(string groupName) {
         if (_realtimeUpdatesConnectionId == null) {
             return;
         }
-
-        IAsyncStream<IStreamMessage> stream =
-            this.GetStreamProvider("StreamProvider")
-                .GetStream<IStreamMessage>("MAIN_STREAM", "PLAYER");
-        await stream.OnNextAsync(new StreamMessage("RemoveFromGroupAsync", _realtimeUpdatesConnectionId, groupName));
+        
+        await _realtimeUpdatesSingleton.OrleansProxy.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
     public Task StartMovementTimer() {
@@ -117,21 +113,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Send random movement updates to clients as a test
         _logger.LogDebug("Sending random movement update...");
 
-        IAsyncStream<IStreamMessage> stream =
-            this.GetStreamProvider("StreamProvider")
-                .GetStream<IStreamMessage>("MAIN_STREAM", "PLAYER");
+
         Random rand = new();
-        await stream.OnNextAsync(new StreamMessage(
-                "PlayerMovementUpdate",
-                new object[] {
-                    this.GetPrimaryKeyString(),
-                    new SerializableVector2(
-                        rand.Next(0, WorldChunkGrain.SizeX),
-                        rand.Next(0, WorldChunkGrain.SizeY)
-                    )
-                },
-                (await GetCurrentChunk()).GetPrimaryKeyString()
-            )
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerMovementUpdate(
+            (await GetCurrentChunk()).GetPrimaryKeyString(),
+            this.GetPrimaryKeyString(),
+            rand.Next(0, WorldChunkGrain.SizeX),
+            rand.Next(0, WorldChunkGrain.SizeY)
         );
     }
 }
