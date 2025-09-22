@@ -1,0 +1,49 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8r6s3nb6g55k"]
+
+[ext_resource type="Script" uid="uid://dcboyd5a6p78x" path="res://Login.cs" id="1_cau7c"]
+
+[node name="Login" type="Node3D"]
+script = ExtResource("1_cau7c")
+
+[node name="Container" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 6
+size_flags_vertical = 6
+
+[node name="CenterContainer" type="CenterContainer" parent="Container"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -153.0
+offset_top = -90.0
+offset_right = 153.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Container/CenterContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Container/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Enter player name"
+
+[node name="PlayerNameInput" type="LineEdit" parent="Container/CenterContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+placeholder_text = "Player name"
+max_length = 20
+
+[node name="Button" type="Button" parent="Container/CenterContainer/VBoxContainer"]
+layout_mode = 2
+text = "Login"
+
+[connection signal="button_up" from="Container/CenterContainer/VBoxContainer/Button" to="." method="_on_login_button_button_up"]

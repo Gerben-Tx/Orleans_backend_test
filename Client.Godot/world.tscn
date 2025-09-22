@@ -1,0 +1,68 @@
+[gd_scene load_steps=4 format=3 uid="uid://61yqv8fidjdl"]
+
+[ext_resource type="Script" uid="uid://b8pi2txvyksi2" path="res://World.cs" id="1_f3sb7"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_gv5m4"]
+size = Vector2(30, 30)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_f3sb7"]
+data = PackedVector3Array(1, 0, 1, -1, 0, 1, 1, 0, -1, -1, 0, 1, -1, 0, -1, 1, 0, -1)
+
+[node name="World" type="Node3D"]
+script = ExtResource("1_f3sb7")
+
+[node name="Players" type="Node" parent="."]
+unique_name_in_owner = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+unique_name_in_owner = true
+mesh = SubResource("PlaneMesh_gv5m4")
+skeleton = NodePath("")
+
+[node name="Area3D" type="Area3D" parent="Ground"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground/Area3D"]
+shape = SubResource("ConcavePolygonShape3D_f3sb7")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(-4.20669e-08, 0.571344, -0.820711, 1.18768e-08, 0.820711, 0.571344, 1, 1.42873e-08, -4.13105e-08, -22.5822, 14.255, -0.102026)
+
+[node name="GUI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="GUI"]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ChunkLabel" type="Label" parent="GUI/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ChunkId: {id}"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="GUI/VBoxContainer"]
+layout_mode = 2
+
+[node name="GoToChunkLabel" type="Label" parent="GUI/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Go to chunk"
+
+[node name="NewChunkIdInput" type="LineEdit" parent="GUI/VBoxContainer/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="GoToChunkButton" type="Button" parent="GUI/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Go"
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.404717, 0)
+light_energy = 90.0
+light_angular_distance = 10.29
+
+[connection signal="button_up" from="GUI/VBoxContainer/HBoxContainer/GoToChunkButton" to="." method="_on_go_to_chunk_button_button_up"]

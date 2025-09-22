@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Microsoft.Orleans.Client" Version="9.2.1" />
+      <PackageReference Include="Microsoft.Orleans.Streaming.AzureStorage" Version="9.2.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Backend.Orleans.SharedContracts\Backend.Orleans.SharedContracts.csproj" />
+      <ProjectReference Include="..\Backend.SignalR.SharedContracts\Backend.SignalR.SharedContracts.csproj" />
+    </ItemGroup>
+
+</Project>
