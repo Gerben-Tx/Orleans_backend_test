@@ -1,7 +1,6 @@
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Microsoft.Extensions.Logging;
-using Orleans.Streams;
 
 namespace Backend.Orleans.GrainClasses;
 
@@ -42,10 +41,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
 
         // Exit from the current chunk
-        await currentChunk.RemovePlayer(this.GetPrimaryKey(), await GetPlayerName());
+        await currentChunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
 
         // Enter the new chunk
-        await chunk.AddPlayer(this.GetPrimaryKey(), await GetPlayerName());
+        await chunk.AddPlayer(this.GetPrimaryKeyString(), await GetName());
 
         // Update new chunk id in state
         _playerState.State.ChunkGrainId = chunk.GetPrimaryKeyLong();
@@ -58,7 +57,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
     public async Task LeaveChunk(IWorldChunkGrain chunk) {
         // Leave the chunk
-        await chunk.RemovePlayer(this.GetPrimaryKey(), await GetPlayerName());
+        await chunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
 
         // Leave the realtime updates group for this chunk
         string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
@@ -69,10 +68,17 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
         return Task.FromResult(worldChunkGrain);
     }
-
-    public Task<string> GetPlayerName() => Task.FromResult(this.GetPrimaryKeyString());
-
-    public async Task Initialize(string connectionId) {
+    
+    public async Task Initialize(string connectionId, string playerName) {
+        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+        // The Name property is only null before this function. After it, it is always set.
+        // We don't want to mark it nullable in PlayerState, because then we'd need to
+        // always check for nulls which will never really happen.
+        if (_playerState.State.Name == null) {
+            _playerState.State.Name = playerName;
+            await _playerState.WriteStateAsync();
+        }
+        
         _realtimeUpdatesConnectionId = connectionId;
 
         // Move player to his last known chunk
@@ -83,6 +89,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
     public Task<SerializableVector2> GetPosition() {
         return Task.FromResult(_playerState.State.Position);
+    }
+
+    public Task<string> GetName() {
+        return Task.FromResult(_playerState.State.Name);
     }
 
     public async Task JoinRealtimeUpdatesGroup(string groupName) {

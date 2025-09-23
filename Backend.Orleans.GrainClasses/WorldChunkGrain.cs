@@ -1,12 +1,10 @@
 using Backend.Orleans.SharedContracts;
-using Backend.Orleans.SharedContracts.Serialization;
 using Microsoft.Extensions.Logging;
-using Orleans.Streams;
 
 namespace Backend.Orleans.GrainClasses;
 
 public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
-    private readonly List<Guid> _players = [];
+    private readonly List<string> _players = [];
     public const int SizeX = 30;
     public const int SizeY = 30;
     private readonly string _groupName;
@@ -22,18 +20,20 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
     }
 
-    public async Task AddPlayer(Guid playerGrainKey, string playerName) {
+    public async Task AddPlayer(string playerGrainKey, string playerName) {
         if (_players.Contains(playerGrainKey)) {
             // Player already exists in this chunk
             return;
         }
 
         _players.Add(playerGrainKey);
-        
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(this.GetPrimaryKeyString(), playerName);
+
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(this.GetPrimaryKeyString(),
+            playerGrainKey,
+            playerName);
     }
 
-    public async Task RemovePlayer(Guid playerGrainKey, string playerName) {
+    public async Task RemovePlayer(string playerGrainKey, string playerName) {
         if (!_players.Contains(playerGrainKey)) {
             // Player doesn't exist in this chunk
             return;
@@ -48,8 +48,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
     public Task<List<IPlayerGrain>> GetAllPlayers() {
         List<IPlayerGrain> players = [];
-        foreach (Guid playerKey in _players) {
-            players.Add(_orleansClient.GetGrain<IPlayerGrain>(playerKey));
+        foreach (string playerKey in _players) {
+            players.Add(_orleansClient.GetGrain<IPlayerGrain>(Guid.Parse(playerKey)));
         }
 
         return Task.FromResult(players);

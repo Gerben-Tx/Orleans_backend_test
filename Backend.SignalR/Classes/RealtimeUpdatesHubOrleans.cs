@@ -14,22 +14,22 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
         _realtimeUpdatesHubClientContext = realtimeUpdatesHubClientContext;
     }
     
-    public async Task PlayerMovementUpdate(string groupName, string playerName, int posX, int posY) {
-        Logger.LogDebug($"PlayerMovementUpdate received: {groupName}, {playerName}, ({posX},{posY})");
+    public async Task PlayerMovementUpdate(string groupName, string playerId, int posX, int posY) {
+        Logger.LogDebug($"PlayerMovementUpdate received: {groupName}, {playerId}, ({posX},{posY})");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerMovementUpdate(playerName, posX, posY);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerMovementUpdate(playerId, posX, posY);
     }
 
-    public async Task PlayerAddedToChunk(string groupName, string playerName) {
-        Logger.LogDebug($"PlayerAddedToChunk received: {groupName}, {playerName}");
+    public async Task PlayerAddedToChunk(string groupName, string playerId, string playerName) {
+        Logger.LogDebug($"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerAddedToChunk(playerName);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerAddedToChunk(playerId, playerName);
     }
 
-    public async Task PlayerRemovedFromChunk(string groupName, string playerName) {
-        Logger.LogDebug($"PlayerRemovedFromChunk received: {groupName}, {playerName}");
+    public async Task PlayerRemovedFromChunk(string groupName, string playerId) {
+        Logger.LogDebug($"PlayerRemovedFromChunk received: {groupName}, {playerId}");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerRemovedFromChunk(playerName);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerRemovedFromChunk(playerId);
     }
 
     public async Task AddToGroupAsync(string groupName, string connectionId) {

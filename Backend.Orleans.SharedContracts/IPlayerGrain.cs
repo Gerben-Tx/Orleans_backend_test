@@ -5,6 +5,7 @@ namespace Backend.Orleans.SharedContracts;
 public interface IPlayerGrain : IGrainWithGuidKey {
     public Task EnterChunk(IWorldChunkGrain chunk);
     public Task<IWorldChunkGrain> GetCurrentChunk();
-    public Task Initialize(string connectionId);
+    public Task Initialize(string connectionId, string playerName);
     public Task<SerializableVector2> GetPosition();
+    public Task<string> GetName();
 }

@@ -34,7 +34,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             Logger.LogDebug("Existing guid found for player name '{PlayerName}' in PlayerRegistry.", playerName);
         }
 
-        await playerGrain.Initialize(Context.ConnectionId);
+        await playerGrain.Initialize(Context.ConnectionId, playerName);
 
         Logger.LogDebug("Done registering player grain");
     }
@@ -80,9 +80,11 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
         List<PlayerListMessage> messages = [];
         foreach (IPlayerGrain player in playersInChunk) {
-            string name = player.GetPrimaryKeyString();
             SerializableVector2 position = await player.GetPosition();
-            messages.Add(new PlayerListMessage { Name = name, PositionX = position.X, PositionY = position.Y });
+            messages.Add(new PlayerListMessage {
+                Id = player.GetPrimaryKeyString(), Name = await player.GetName(), PositionX = position.X,
+                PositionY = position.Y
+            });
         }
 
         return messages;

@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Client.Godot.Classes.Debug;
 using CommandLine;
 using Godot;
-using RandomFriendlyNameGenerator;
 
 namespace Client.Godot.Classes;
 
@@ -47,7 +45,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             await ServerCommunicator.Instance.HubProxy.GetPlayersInCurrentChunk(ServerCommunicator.Instance.PlayerName);
         GD.Print($"Players in chunk: {playersInChunk.Count}");
         foreach (PlayerListMessage playerListMessage in playersInChunk) {
-            CreatePlayer(playerListMessage.Name, new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
+            CreatePlayer(playerListMessage.Id, playerListMessage.Name, new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
         }
     }
 
@@ -64,12 +62,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GetTree().ChangeSceneToFile("res://world.tscn");
     }
 
-    private void CreatePlayer(string playerName, Vector2 playerPosition) {
+    private void CreatePlayer(string playerId, string playerName, Vector2 playerPosition) {
         PackedScene playerScene = GD.Load<PackedScene>("res://Player.tscn");
         // Node playersNode = GetNode<Node>("%Players");
         Node playersNode = GetNode<Node>("/root/World/Players");
         Node3D playerNode = playerScene.Instantiate<Node3D>();
-        playerNode.Name = playerName;
+        playerNode.Name = playerId;
         playerNode.Position = new Vector3(
             playerPosition.X,
             0,
@@ -80,9 +78,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerNode.Owner = playersNode;
     }
 
-    private void DeletePlayer(string playerName) {
+    private void DeletePlayer(string playerId) {
         Node playersNode = GetNode<Node>("%Players");
-        Node playerNode = playersNode.FindChild(playerName);
+        Node playerNode = playersNode.FindChild(playerId);
 
         if (playerNode == null) {
             return;
@@ -93,9 +91,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playersNode.RemoveChild(playerNode);
     }
 
-    private void UpdatePlayer(string playerName, int posX, int posY) {
+    private void UpdatePlayer(string playerId, int posX, int posY) {
         Node playersNode = GetNode<Node>("%Players");
-        Node3D playerNode = (Node3D)playersNode.FindChild(playerName);
+        Node3D playerNode = (Node3D)playersNode.FindChild(playerId);
         if (playerNode == null) {
             return;
         }
@@ -103,30 +101,30 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerNode.Position = new Vector3(posX, 0, posY);
     }
 
-    public Task PlayerMovementUpdate(string playerName, int posX, int posY) {
-        GD.Print($"debug PlayerMovementUpdate: {playerName}, {posX}, {posY}");
+    public Task PlayerMovementUpdate(string playerId, int posX, int posY) {
+        GD.Print($"debug PlayerMovementUpdate: {playerId}, {posX}, {posY}");
 
-        CallDeferred(nameof(UpdatePlayer), playerName, posX, posY);
+        CallDeferred(nameof(UpdatePlayer), playerId, posX, posY);
 
         return Task.CompletedTask;
     }
 
-    public Task PlayerAddedToChunk(string playerName) {
-        GD.Print($"debug PlayerAddedToChunk: {playerName}");
+    public Task PlayerAddedToChunk(string playerId, string playerName) {
+        GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}");
 
         // TODO: if player already exist, return
 
         // TODO: get correct position from server
-        CallDeferred(nameof(CreatePlayer), playerName, Vector2.Zero);
+        CallDeferred(nameof(CreatePlayer), playerId, playerName, Vector2.Zero);
 
         return Task.CompletedTask;
     }
 
-    public Task PlayerRemovedFromChunk(string playerName) {
-        GD.Print($"debug PlayerRemovedFromChunk: {playerName}");
+    public Task PlayerRemovedFromChunk(string playerId) {
+        GD.Print($"debug PlayerRemovedFromChunk: {playerId}");
 
         // TODO: if player doesnt exist, return
-        CallDeferred(nameof(DeletePlayer), playerName);
+        CallDeferred(nameof(DeletePlayer), playerId);
 
         return Task.CompletedTask;
     }
