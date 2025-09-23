@@ -12,6 +12,7 @@
     </ItemGroup>
     <ItemGroup Condition="'$(Configuration)' == 'Debug' Or '$(Configuration)' == 'ExportDebug'">
         <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+        <PackageReference Include="RandomFriendlyNameGenerator" Version="1.0.9" />
     </ItemGroup>
     <ItemGroup Condition="'$(Configuration)' == 'ExportRelease'">
         <Compile Remove="Classes\Debug\*" />

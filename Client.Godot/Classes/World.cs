@@ -1,7 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
+using Client.Godot.Classes.Debug;
+using CommandLine;
 using Godot;
+using RandomFriendlyNameGenerator;
 
 namespace Client.Godot.Classes;
 
@@ -11,10 +15,24 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     public async override void _Ready() {
         base._Ready();
         
+#if DEBUG
+        Parser.Default.ParseArguments<DebugCommandLineOptions>(OS.GetCmdlineArgs())
+            .WithParsed(o => {
+                if (o.Chunk != null) {
+                    GD.Print($"Chunk auto join enabled, chunk id: {o.Chunk}");
+                    ServerCommunicator.Instance.HubProxy.MoveToChunk(ServerCommunicator.Instance.PlayerName, (int)o.Chunk);
+                }
+            });
+#endif
+        
         // Subscribe to realtime updates
         GD.Print("Subscribing to realtime updates...");
         ServerCommunicator.Instance.ClientRegistration(this);
 
+        // Show player name
+        Label playerNameLabel = GetNode<Label>("%PlayerNameLabel");
+        playerNameLabel.Text = playerNameLabel.Text.Replace("{name}", ServerCommunicator.Instance.PlayerName);
+        
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
         long? currentChunkId =

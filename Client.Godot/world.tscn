@@ -45,6 +45,11 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "ChunkId: {id}"
 
+[node name="PlayerNameLabel" type="Label" parent="GUI/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Player name: {name}"
+
 [node name="HBoxContainer" type="HBoxContainer" parent="GUI/VBoxContainer"]
 layout_mode = 2
 
