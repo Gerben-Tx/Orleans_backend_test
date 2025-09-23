@@ -22,7 +22,6 @@ ServerCommunicator="*res://ServerCommunicator.cs"
 [dotnet]
 
 project/assembly_name="Client.Godot"
-project/solution_directory="../"
 
 [rendering]
 
