@@ -41,7 +41,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Remove(playerGrainKey);
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(this.GetPrimaryKeyString(), playerName);
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(this.GetPrimaryKeyString(), playerGrainKey);
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);

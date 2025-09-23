@@ -8,4 +8,5 @@ public interface IPlayerGrain : IGrainWithGuidKey {
     public Task Initialize(string connectionId, string playerName);
     public Task<SerializableVector2> GetPosition();
     public Task<string> GetName();
+    public Task DeactivateOnIdle();
 }

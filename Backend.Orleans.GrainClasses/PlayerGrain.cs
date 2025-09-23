@@ -95,6 +95,12 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         return Task.FromResult(_playerState.State.Name);
     }
 
+    public new Task DeactivateOnIdle() {
+        base.DeactivateOnIdle();
+        
+        return Task.CompletedTask;
+    }
+
     public async Task JoinRealtimeUpdatesGroup(string groupName) {
         if (_realtimeUpdatesConnectionId == null) {
             return;

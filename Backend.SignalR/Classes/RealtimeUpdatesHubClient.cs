@@ -20,10 +20,12 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         Logger.LogDebug("RegisterPlayerGrain received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId, playerName);
 
+        Context.Items["PlayerName"] = playerName;
+
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
         if (playerGrain == null) {
             Logger.LogDebug(
-                "No existing guid found for player name '{PlayerName}' in PlayerRegistry. Creating new one.",
+                "No existing player grain found for player name '{PlayerName}' in PlayerRegistry. Creating new one.",
                 playerName);
 
             Guid newPlayerGuid = Guid.NewGuid();
@@ -31,7 +33,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             await playerRegistry.AddPlayer(playerName, newPlayerGuid);
             playerGrain = OrleansClient.GetGrain<IPlayerGrain>(newPlayerGuid);
         } else {
-            Logger.LogDebug("Existing guid found for player name '{PlayerName}' in PlayerRegistry.", playerName);
+            Logger.LogDebug("Existing player grain found for player name '{PlayerName}' in PlayerRegistry.", playerName);
         }
 
         await playerGrain.Initialize(Context.ConnectionId, playerName);
@@ -92,14 +94,13 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
     private async Task<IPlayerGrain?> FindPlayerInRegistry(string playerName) {
         IPlayerRegistry playerRegistry = OrleansClient.GetGrain<IPlayerRegistry>(Guid.Empty);
-        Guid? existingPlayerGuid = await playerRegistry.GetPlayer(playerName);
-        if (existingPlayerGuid == null) {
+        IPlayerGrain? existingPlayerGrain = await playerRegistry.FindPlayerByName(playerName);
+        if (existingPlayerGrain == null) {
             Logger.LogError(
-                "Could not find player guid for player name '{PlayerName}' in the PlayerRegistry", playerName);
+                "Could not find player grain for player name '{PlayerName}' in the PlayerRegistry", playerName);
             return null;
         }
-
-        IPlayerGrain playerGrain = OrleansClient.GetGrain<IPlayerGrain>(existingPlayerGuid.Value);
-        return playerGrain;
+        
+        return existingPlayerGrain;
     }
 }

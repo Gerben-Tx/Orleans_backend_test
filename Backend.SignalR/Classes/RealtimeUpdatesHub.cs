@@ -1,3 +1,4 @@
+using Backend.Orleans.SharedContracts;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Backend.SignalR.Classes;
@@ -14,12 +15,21 @@ public class RealtimeUpdatesHub<T> : Hub<T> where T : class {
         Logger = logger;
     }
 
-    public override Task OnDisconnectedAsync(Exception? exception) {
-        // TODO: Get player grain by it's connection id (we don't have the player name here..)
-        // TODO: Make sure the player grain stops
+    public override async Task OnDisconnectedAsync(Exception? exception) {
+        Logger.LogDebug($"OnDisconnectedAsync: {exception?.Message}");
 
-        return base.OnDisconnectedAsync(exception);
+        string? playerName = Context.Items["PlayerName"] as string;
+        if (playerName == null) {
+            throw new Exception("Player name not found in context items");
+        }
+        
+        IPlayerRegistry playerRegistry = OrleansClient.GetGrain<IPlayerRegistry>(Guid.Empty);
+        IPlayerGrain? playerGrain = await playerRegistry.FindPlayerByName(playerName);
+        if (playerGrain != null) {
+            Logger.LogDebug("Connection disconnected, deactivating player grain...");
+            await playerGrain.DeactivateOnIdle();
+        }
+
+        await base.OnDisconnectedAsync(exception);
     }
-
-    // TODO: make different hubs for different types of updates
 }
