@@ -1,6 +1,6 @@
 using System;
 
-namespace Client.Godot.SignalR;
+namespace Client.Godot.Classes.SignalR;
 
 [AttributeUsage(AttributeTargets.Method)]
 internal class HubServerProxyAttribute : Attribute { }

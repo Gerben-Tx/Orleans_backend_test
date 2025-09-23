@@ -1,10 +1,10 @@
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
-using Client.Godot.SignalR;
+using Client.Godot.Classes.SignalR;
 using Godot;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Client.Godot;
+namespace Client.Godot.Classes;
 
 public partial class ServerCommunicator : Node {
     public static ServerCommunicator Instance { get; private set; }

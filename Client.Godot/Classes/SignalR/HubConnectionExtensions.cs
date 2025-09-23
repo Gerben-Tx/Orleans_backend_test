@@ -1,7 +1,7 @@
 using System;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Client.Godot.SignalR;
+namespace Client.Godot.Classes.SignalR;
 
 public static partial class HubConnectionExtensions
 {

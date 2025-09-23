@@ -2,3 +2,4 @@
 .godot/
 /android/
 Exported builds/
+!Classes/Debug/

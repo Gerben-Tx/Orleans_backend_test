@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
 
-namespace Client.Godot;
+namespace Client.Godot.Classes;
 
 public partial class World : Node3D, IRealtimeUpdatesClient {
     private RandomNumberGenerator _randomNumberGenerator = new RandomNumberGenerator();
