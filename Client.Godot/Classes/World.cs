@@ -12,17 +12,18 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     public async override void _Ready() {
         base._Ready();
-        
+
 #if DEBUG
         Parser.Default.ParseArguments<DebugCommandLineOptions>(OS.GetCmdlineArgs())
             .WithParsed(o => {
                 if (o.Chunk != null) {
                     GD.Print($"Chunk auto join enabled, chunk id: {o.Chunk}");
-                    ServerCommunicator.Instance.HubProxy.MoveToChunk(ServerCommunicator.Instance.PlayerName, (int)o.Chunk);
+                    ServerCommunicator.Instance.HubProxy.MoveToChunk(ServerCommunicator.Instance.PlayerName,
+                        (int)o.Chunk);
                 }
             });
 #endif
-        
+
         // Subscribe to realtime updates
         GD.Print("Subscribing to realtime updates...");
         ServerCommunicator.Instance.ClientRegistration(this);
@@ -30,7 +31,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         // Show player name
         Label playerNameLabel = GetNode<Label>("%PlayerNameLabel");
         playerNameLabel.Text = playerNameLabel.Text.Replace("{name}", ServerCommunicator.Instance.PlayerName);
-        
+
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
         long? currentChunkId =
@@ -45,7 +46,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             await ServerCommunicator.Instance.HubProxy.GetPlayersInCurrentChunk(ServerCommunicator.Instance.PlayerName);
         GD.Print($"Players in chunk: {playersInChunk.Count}");
         foreach (PlayerListMessage playerListMessage in playersInChunk) {
-            CreatePlayer(playerListMessage.Id, playerListMessage.Name, new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
+            CreatePlayer(playerListMessage.Id, playerListMessage.Name,
+                new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
         }
     }
 
@@ -63,6 +65,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     private void CreatePlayer(string playerId, string playerName, Vector2 playerPosition) {
+        if (FindPlayer(playerId) != null) {
+            return; // Player already exists
+        }
+
         PackedScene playerScene = GD.Load<PackedScene>("res://Player.tscn");
         // Node playersNode = GetNode<Node>("%Players");
         Node playersNode = GetNode<Node>("/root/World/Players");
@@ -79,16 +85,20 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     private void DeletePlayer(string playerId) {
-        Node playersNode = GetNode<Node>("%Players");
-        Node playerNode = playersNode.FindChild(playerId);
-
+        Node playerNode = FindPlayer(playerId);
         if (playerNode == null) {
             return;
         }
 
-        // TODO: this doesn't seem to work. The player is still visible
         playerNode.QueueFree();
+
+        Node playersNode = GetNode<Node>("%Players");
         playersNode.RemoveChild(playerNode);
+    }
+
+    private Node FindPlayer(string playerId) {
+        Node playersNode = GetNode<Node>("%Players");
+        return playersNode.FindChild(playerId);
     }
 
     private void UpdatePlayer(string playerId, int posX, int posY) {
@@ -101,31 +111,34 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerNode.Position = new Vector3(posX, 0, posY);
     }
 
+    private void HandlePlayerMovementUpdate(string playerId, int posX, int posY) {
+        UpdatePlayer(playerId, posX, posY);
+    }
+
+    private void HandlePlayerAddedToChunk(string playerId, string playerName) {
+        // TODO: get correct position from server
+        CreatePlayer(playerId, playerName, Vector2.Zero);
+    }
+
+    private void HandlePlayerRemovedFromChunk(string playerId) {
+        DeletePlayer(playerId);
+    }
+
     public Task PlayerMovementUpdate(string playerId, int posX, int posY) {
         GD.Print($"debug PlayerMovementUpdate: {playerId}, {posX}, {posY}");
-
-        CallDeferred(nameof(UpdatePlayer), playerId, posX, posY);
-
+        CallDeferred(nameof(HandlePlayerMovementUpdate), playerId, posX, posY);
         return Task.CompletedTask;
     }
 
     public Task PlayerAddedToChunk(string playerId, string playerName) {
         GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}");
-
-        // TODO: if player already exist, return
-
-        // TODO: get correct position from server
-        CallDeferred(nameof(CreatePlayer), playerId, playerName, Vector2.Zero);
-
+        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName);
         return Task.CompletedTask;
     }
 
     public Task PlayerRemovedFromChunk(string playerId) {
         GD.Print($"debug PlayerRemovedFromChunk: {playerId}");
-
-        // TODO: if player doesnt exist, return
-        CallDeferred(nameof(DeletePlayer), playerId);
-
+        CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId);
         return Task.CompletedTask;
     }
 }
