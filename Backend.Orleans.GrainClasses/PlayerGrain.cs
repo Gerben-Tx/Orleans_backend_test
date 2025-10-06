@@ -68,7 +68,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
         return Task.FromResult(worldChunkGrain);
     }
-    
+
     public async Task Initialize(string connectionId, string playerName) {
         // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
         // The Name property is only null before this function. After it, it is always set.
@@ -78,13 +78,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             _playerState.State.Name = playerName;
             await _playerState.WriteStateAsync();
         }
-        
+
         _realtimeUpdatesConnectionId = connectionId;
 
         // Move player to his last known chunk
         IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
         await EnterChunk(worldChunkGrain);
-        // await StartMovementTimer();
+        await StartMovementTimer();
     }
 
     public Task<SerializableVector2> GetPosition() {
@@ -97,7 +97,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
     public new Task DeactivateOnIdle() {
         base.DeactivateOnIdle();
-        
+
         return Task.CompletedTask;
     }
 
@@ -105,7 +105,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         if (_realtimeUpdatesConnectionId == null) {
             return;
         }
-        
+
         await _realtimeUpdatesSingleton.OrleansProxy.AddToGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
@@ -113,7 +113,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         if (_realtimeUpdatesConnectionId == null) {
             return;
         }
-        
+
         await _realtimeUpdatesSingleton.OrleansProxy.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
@@ -128,14 +128,16 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private async Task SendRandomMovementUpdate() {
         // Send random movement updates to clients as a test
         _logger.LogDebug("Sending random movement update...");
-
-
+        
         Random rand = new();
-        SerializableVector2 newPosition = new(rand.Next(0, WorldChunkGrain.SizeX), rand.Next(0, WorldChunkGrain.SizeY));
+        SerializableVector2 newPosition = new(
+            rand.Next(-WorldChunkGrain.SizeX / 2, WorldChunkGrain.SizeX / 2),
+            rand.Next(-WorldChunkGrain.SizeY / 2, WorldChunkGrain.SizeY / 2)
+        );
 
         _playerState.State.Position = newPosition;
         await _playerState.WriteStateAsync();
-        
+
         await _realtimeUpdatesSingleton.OrleansProxy.PlayerMovementUpdate(
             (await GetCurrentChunk()).GetPrimaryKeyString(),
             this.GetPrimaryKeyString(),
