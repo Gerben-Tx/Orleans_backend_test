@@ -44,7 +44,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await currentChunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
 
         // Enter the new chunk
-        await chunk.AddPlayer(this.GetPrimaryKeyString(), await GetName());
+        await chunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
 
         // Update new chunk id in state
         _playerState.State.ChunkGrainId = chunk.GetPrimaryKeyLong();
@@ -84,7 +84,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Move player to his last known chunk
         IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
         await EnterChunk(worldChunkGrain);
-        await StartMovementTimer();
+        // await StartMovementTimer();
     }
 
     public Task<SerializableVector2> GetPosition() {
@@ -131,11 +131,16 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
 
         Random rand = new();
+        SerializableVector2 newPosition = new(rand.Next(0, WorldChunkGrain.SizeX), rand.Next(0, WorldChunkGrain.SizeY));
+
+        _playerState.State.Position = newPosition;
+        await _playerState.WriteStateAsync();
+        
         await _realtimeUpdatesSingleton.OrleansProxy.PlayerMovementUpdate(
             (await GetCurrentChunk()).GetPrimaryKeyString(),
             this.GetPrimaryKeyString(),
-            rand.Next(0, WorldChunkGrain.SizeX),
-            rand.Next(0, WorldChunkGrain.SizeY)
+            newPosition.X,
+            newPosition.Y
         );
     }
 }

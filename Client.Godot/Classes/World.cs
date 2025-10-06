@@ -115,9 +115,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         UpdatePlayer(playerId, posX, posY);
     }
 
-    private void HandlePlayerAddedToChunk(string playerId, string playerName) {
-        // TODO: get correct position from server
-        CreatePlayer(playerId, playerName, Vector2.Zero);
+    private void HandlePlayerAddedToChunk(string playerId, string playerName, int posX, int posY) {
+        CreatePlayer(playerId, playerName, new Vector2(posX, posY));
     }
 
     private void HandlePlayerRemovedFromChunk(string playerId) {
@@ -130,9 +129,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         return Task.CompletedTask;
     }
 
-    public Task PlayerAddedToChunk(string playerId, string playerName) {
-        GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}");
-        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName);
+    public Task PlayerAddedToChunk(string playerId, string playerName, int posX, int posY) {
+        GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}, ({posX},{posY})");
+        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, posX, posY);
         return Task.CompletedTask;
     }
 

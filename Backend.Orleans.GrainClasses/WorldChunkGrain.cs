@@ -1,4 +1,5 @@
 using Backend.Orleans.SharedContracts;
+using Backend.Orleans.SharedContracts.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace Backend.Orleans.GrainClasses;
@@ -20,7 +21,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
     }
 
-    public async Task AddPlayer(string playerGrainKey, string playerName) {
+    public async Task AddPlayer(string playerGrainKey, string playerName, SerializableVector2 playerPosition) {
         if (_players.Contains(playerGrainKey)) {
             // Player already exists in this chunk
             return;
@@ -31,7 +32,9 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(
             this.GetPrimaryKeyString(),
             playerGrainKey,
-            playerName
+            playerName,
+            playerPosition.X,
+            playerPosition.Y
         );
     }
 

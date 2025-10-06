@@ -13,17 +13,24 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
     ) : base(orleansClient, logger) {
         _realtimeUpdatesHubClientContext = realtimeUpdatesHubClientContext;
     }
-    
+
     public async Task PlayerMovementUpdate(string groupName, string playerId, int posX, int posY) {
         Logger.LogDebug($"PlayerMovementUpdate received: {groupName}, {playerId}, ({posX},{posY})");
 
         await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerMovementUpdate(playerId, posX, posY);
     }
 
-    public async Task PlayerAddedToChunk(string groupName, string playerId, string playerName) {
-        Logger.LogDebug($"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}");
+    public async Task PlayerAddedToChunk(
+        string groupName,
+        string playerId,
+        string playerName,
+        int posX,
+        int posY
+    ) {
+        Logger.LogDebug($"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}, ({posX},{posY})");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerAddedToChunk(playerId, playerName);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName)
+            .PlayerAddedToChunk(playerId, playerName, posX, posY);
     }
 
     public async Task PlayerRemovedFromChunk(string groupName, string playerId) {
