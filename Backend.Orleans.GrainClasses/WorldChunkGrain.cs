@@ -28,9 +28,11 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Add(playerGrainKey);
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(this.GetPrimaryKeyString(),
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(
+            this.GetPrimaryKeyString(),
             playerGrainKey,
-            playerName);
+            playerName
+        );
     }
 
     public async Task RemovePlayer(string playerGrainKey, string playerName) {
