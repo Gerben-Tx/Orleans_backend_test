@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Backend.SignalR.SharedContr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client.Godot", "Client.Godot\Client.Godot.csproj", "{D97C09E0-6EBB-44B6-B663-80CDF7FA13A2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Backend.Orleans.GrainClasses", "Tests.Backend.Orleans.GrainClasses\Tests.Backend.Orleans.GrainClasses.csproj", "{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 	Debug|Any CPU = Debug|Any CPU
@@ -55,5 +57,11 @@ Global
 		{D97C09E0-6EBB-44B6-B663-80CDF7FA13A2}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
 		{D97C09E0-6EBB-44B6-B663-80CDF7FA13A2}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
 		{D97C09E0-6EBB-44B6-B663-80CDF7FA13A2}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.ExportDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.ExportDebug|Any CPU.Build.0 = Debug|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.ExportRelease|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D4309AF-CF37-4115-A98B-ED5C9CA25EFC}.ExportRelease|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 EndGlobal
