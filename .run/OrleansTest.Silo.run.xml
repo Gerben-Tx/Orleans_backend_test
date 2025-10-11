@@ -21,7 +21,6 @@
     <method v="2">
       <option name="Build" />
       <option name="RunAzuriteTask" enabled="true" />
-      <option name="LaunchBrowser.Before.Run" url="http://localhost:8080/#/grains" />
     </method>
   </configuration>
 </component>
