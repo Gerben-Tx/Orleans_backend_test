@@ -30,7 +30,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await base.OnDeactivateAsync(reason, cancellationToken);
     }
 
-    public async Task EnterChunk(IWorldChunkGrain chunk) {
+    public async Task EnterChunk(IWorldChunkGrain targetChunk) {
         // List<string> playersInChunk = await chunk.GetAllPlayers();
         // string playerName = await GetPlayerName();
         // if (playersInChunk.Find(x => x == playerName) != null) {
@@ -39,20 +39,23 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // }
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
+        if (currentChunk != targetChunk) {
+            // Exit from the current chunk
+            await LeaveChunk(currentChunk);
 
-        // Exit from the current chunk
-        await currentChunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
-
-        // Enter the new chunk
-        await chunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
+            // Enter the new chunk
+            await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
+            
+            // Join realtime updates group for this chunk
+            string chunkGroupName = await targetChunk.GetRealtimeUpdatesGroupName();
+            await JoinRealtimeUpdatesGroup(chunkGroupName);
+        }
 
         // Update new chunk id in state
-        _playerState.State.ChunkGrainId = chunk.GetPrimaryKeyLong();
-        await _playerState.WriteStateAsync();
-
-        // Join realtime updates group for this chunk
-        string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
-        await JoinRealtimeUpdatesGroup(chunkGroupName);
+        if (_playerState.State.ChunkGrain != targetChunk) {
+            _playerState.State.ChunkGrain = targetChunk;
+            await _playerState.WriteStateAsync();
+        }
     }
 
     public async Task LeaveChunk(IWorldChunkGrain chunk) {
@@ -65,8 +68,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     }
 
     public Task<IWorldChunkGrain> GetCurrentChunk() {
-        IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
-        return Task.FromResult(worldChunkGrain);
+        return Task.FromResult(_playerState.State.ChunkGrain ?? GrainFactory.GetGrain<IWorldChunkGrain>(0L));
     }
 
     public async Task Initialize(string connectionId, string playerName) {
@@ -82,8 +84,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         _realtimeUpdatesConnectionId = connectionId;
 
         // Move player to his last known chunk
-        IWorldChunkGrain worldChunkGrain = GrainFactory.GetGrain<IWorldChunkGrain>(_playerState.State.ChunkGrainId);
-        await EnterChunk(worldChunkGrain);
+        await EnterChunk(await GetCurrentChunk());
         await StartMovementTimer();
     }
 
@@ -137,9 +138,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         _playerState.State.Position = newPosition;
         await _playerState.WriteStateAsync();
+        IWorldChunkGrain currentChunk = await GetCurrentChunk();
 
         await _realtimeUpdatesSingleton.OrleansProxy.PlayerMovementUpdate(
-            (await GetCurrentChunk()).GetPrimaryKeyString(),
+            await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
             newPosition.X,
             newPosition.Y

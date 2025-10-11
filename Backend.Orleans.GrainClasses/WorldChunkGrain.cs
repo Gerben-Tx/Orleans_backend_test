@@ -9,6 +9,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     public const int SizeX = 30;
     public const int SizeY = 30;
     private readonly string _groupName;
+    private readonly ILogger<WorldChunkGrain> _logger;
     private readonly IClusterClient _orleansClient;
     private readonly RealtimeUpdatesSingleton _realtimeUpdatesSingleton;
 
@@ -16,7 +17,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         ILogger<WorldChunkGrain> logger,
         IClusterClient orleansClient
     ) : base(logger) {
-        _groupName = this.GetPrimaryKeyString();
+        _groupName = this.GetPrimaryKeyLong().ToString();
+        _logger = logger;
         _orleansClient = orleansClient;
         _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
     }
@@ -30,7 +32,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         _players.Add(playerGrainKey);
 
         await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(
-            this.GetPrimaryKeyString(),
+            _groupName,
             playerGrainKey,
             playerName,
             playerPosition.X,
@@ -46,7 +48,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Remove(playerGrainKey);
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(this.GetPrimaryKeyString(), playerGrainKey);
+        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(_groupName, playerGrainKey);
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);
