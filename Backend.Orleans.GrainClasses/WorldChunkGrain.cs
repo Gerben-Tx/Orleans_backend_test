@@ -1,5 +1,6 @@
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
+using Backend.SignalR.SharedContracts;
 using Microsoft.Extensions.Logging;
 
 namespace Backend.Orleans.GrainClasses;
@@ -11,16 +12,17 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     private readonly string _groupName;
     private readonly ILogger<WorldChunkGrain> _logger;
     private readonly IClusterClient _orleansClient;
-    private readonly RealtimeUpdatesSingleton _realtimeUpdatesSingleton;
+    private readonly IRealtimeUpdatesOrleans _realtimeUpdates;
 
     public WorldChunkGrain(
         ILogger<WorldChunkGrain> logger,
-        IClusterClient orleansClient
+        IClusterClient orleansClient,
+        IRealtimeUpdatesOrleans realtimeUpdates
     ) : base(logger) {
         _groupName = this.GetPrimaryKeyLong().ToString();
         _logger = logger;
         _orleansClient = orleansClient;
-        _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
+        _realtimeUpdates = realtimeUpdates;
     }
 
     public async Task AddPlayer(string playerGrainKey, string playerName, SerializableVector2 playerPosition) {
@@ -31,7 +33,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Add(playerGrainKey);
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerAddedToChunk(
+        await _realtimeUpdates.PlayerAddedToChunk(
             _groupName,
             playerGrainKey,
             playerName,
@@ -48,7 +50,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Remove(playerGrainKey);
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerRemovedFromChunk(_groupName, playerGrainKey);
+        await _realtimeUpdates.PlayerRemovedFromChunk(_groupName, playerGrainKey);
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);

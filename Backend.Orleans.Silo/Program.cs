@@ -1,6 +1,10 @@
 ﻿using Azure.Data.Tables;
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
+using Backend.Orleans.Silo.SignalR;
+using Backend.SignalR.SharedContracts;
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Orleans.Configuration;
@@ -47,6 +51,16 @@ using IHost host = new HostBuilder()
                 options.CollectionAge = TimeSpan.FromSeconds(11);
             })
             .UseDashboard(options => { });
+    })
+    .ConfigureServices(services => {
+        services.AddSingleton<IRealtimeUpdatesOrleans>(_ => {
+            HubConnection connection = new HubConnectionBuilder()
+                .WithUrl("http://localhost:5202/realtimeUpdatesHubOrleans")
+                .WithAutomaticReconnect()
+                .Build();
+            connection.StartAsync();
+            return connection.ServerProxy<IRealtimeUpdatesOrleans>();
+        });
     })
     .Build();
 await host.RunAsync();
