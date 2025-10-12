@@ -10,12 +10,6 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>> logger
     ) : base(orleansClient, logger) { }
 
-    public Task Debug(string message) {
-        Logger.LogDebug("Debug message received from '{ContextConnectionId}': {Message}", Context.ConnectionId,
-            message);
-        return Task.CompletedTask;
-    }
-
     public async Task RegisterPlayerGrain(string playerName) {
         Logger.LogDebug("RegisterPlayerGrain received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId, playerName);
