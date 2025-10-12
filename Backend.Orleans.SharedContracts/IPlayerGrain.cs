@@ -9,4 +9,5 @@ public interface IPlayerGrain : IGrainWithGuidKey {
     public Task<SerializableVector2> GetPosition();
     public Task<string> GetName();
     public Task DeactivateOnIdle();
+    public Task<string> GetKey();
 }

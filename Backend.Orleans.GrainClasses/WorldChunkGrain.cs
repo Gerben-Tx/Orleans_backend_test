@@ -54,6 +54,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);
+    public Task<long> GetKey() => Task.FromResult(this.GetPrimaryKeyLong());
 
     public Task<List<IPlayerGrain>> GetAllPlayers() {
         List<IPlayerGrain> players = [];

@@ -104,6 +104,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         return Task.CompletedTask;
     }
 
+    public Task<string> GetKey() => Task.FromResult(this.GetPrimaryKeyString());
+
     public async Task JoinRealtimeUpdatesGroup(string groupName) {
         if (_realtimeUpdatesConnectionId == null) {
             return;
