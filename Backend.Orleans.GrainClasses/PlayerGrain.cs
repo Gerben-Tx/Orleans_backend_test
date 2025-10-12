@@ -39,15 +39,22 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         //     // Player is already in the new chunk, do nothing
         //     return;
         // }
+        bool isPlayerInChunk = await targetChunk.IsPlayerInChunk(await GetKey());
+        if (!isPlayerInChunk) {
+            IWorldChunkGrain currentChunk = await GetCurrentChunk();
+            
+            _logger.LogDebug(
+                "Moving player from chunk {CurrentChunkId} to chunk {NewChunkId}",
+                currentChunk.GetKey(),
+                targetChunk.GetKey()
+            );
 
-        IWorldChunkGrain currentChunk = await GetCurrentChunk();
-        if (currentChunk != targetChunk) {
             // Exit from the current chunk
             await LeaveChunk(currentChunk);
 
             // Enter the new chunk
             await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
-            
+
             // Join realtime updates group for this chunk
             string chunkGroupName = await targetChunk.GetRealtimeUpdatesGroupName();
             await JoinRealtimeUpdatesGroup(chunkGroupName);
@@ -123,7 +130,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     }
 
     public Task StartMovementTimer() {
-        IDisposable timer = this.RegisterGrainTimer(SendRandomMovementUpdate,
+        this.RegisterGrainTimer(
+            SendRandomMovementUpdate,
             new GrainTimerCreationOptions(TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5))
                 { Interleave = true, KeepAlive = true });
 
@@ -133,7 +141,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private async Task SendRandomMovementUpdate() {
         // Send random movement updates to clients as a test
         _logger.LogDebug("Sending random movement update...");
-        
+
         Random rand = new();
         SerializableVector2 newPosition = new(
             rand.Next(-WorldChunkGrain.SizeX / 2, WorldChunkGrain.SizeX / 2),

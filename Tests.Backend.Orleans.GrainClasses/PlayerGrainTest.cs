@@ -23,9 +23,12 @@ public class PlayerGrainTest : TestKitBase {
 
         // Create a mock chunk grain
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
+        chunkMock.Setup(x => x.IsPlayerInChunk(It.IsAny<string>()))
+            .Returns(Task.FromResult(true))
+            .Verifiable(Times.Once);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName))
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(1));
 
         // Create the realtime updates mock
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
@@ -53,6 +56,7 @@ public class PlayerGrainTest : TestKitBase {
         chunkMock.Verify(
             x => x.RemovePlayer(playerGrain.GetPrimaryKeyString(), initialState.Name),
             Times.Once);
+        chunkMock.Verify();
         realtimeUpdatesMock.Verify();
     }
 
@@ -143,7 +147,7 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(currentChunkGroupName));
         currentChunkMock.Setup(x => x.RemovePlayer(It.IsAny<string>(), playerName))
             .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to EnterChunk
 
         Mock<IWorldChunkGrain> targetChunkMock = Silo.AddProbe<IWorldChunkGrain>(targetChunkId);
         targetChunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
@@ -155,7 +159,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.RemoveFromGroupAsync(currentChunkGroupName, connectionId))
             .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to EnterChunk
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(targetChunkGroupName, connectionId))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
@@ -186,7 +190,6 @@ public class PlayerGrainTest : TestKitBase {
         // Arrange
         Guid playerGrainGuid = Guid.NewGuid();
         string playerName = "Test Player";
-        string connectionId = "Connection123";
         long chunkId = 1L;
         string chunkGroupName = "Chunk Group";
 
@@ -194,6 +197,9 @@ public class PlayerGrainTest : TestKitBase {
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Verify(x => x.AddPlayer(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SerializableVector2>()), Times.Never);
+        chunkMock.Setup(x => x.IsPlayerInChunk(It.IsAny<string>()))
+            .Returns(Task.FromResult(true))
+            .Verifiable(Times.Once);
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Verify(x => x.AddToGroupAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
@@ -206,7 +212,8 @@ public class PlayerGrainTest : TestKitBase {
         Silo.AddPersistentState("player", "tableStore", initialState);
 
         PlayerGrain playerGrain = await Silo.CreateGrainAsync<PlayerGrain>(playerGrainGuid);
-        await playerGrain.Initialize(connectionId, playerName);
+        
+        // No need for initialize() here since we don't care about the connection id
 
         // Act
         await playerGrain.EnterChunk(chunkMock.Object);
@@ -231,12 +238,12 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Setup(x => x.RemovePlayer(It.IsAny<string>(), playerName))
             .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to LeaveChunk
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.RemoveFromGroupAsync(chunkGroupName, connectionId))
             .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to LeaveChunk
 
         PlayerState initialState = new PlayerState {
             Name = playerName,
@@ -431,7 +438,7 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.CompletedTask);
         realtimeUpdatesMock.Setup(x => x.RemoveFromGroupAsync(groupName, connectionId))
             .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
+            .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to LeaveRealtimeUpdatesGroup
 
         PlayerState initialState = new PlayerState {
             Name = playerName,

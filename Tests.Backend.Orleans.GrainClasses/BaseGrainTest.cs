@@ -28,7 +28,7 @@ public class BaseGrainTest {
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("OnActivateAsync")),
+                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("OnActivateAsync")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -49,7 +49,7 @@ public class BaseGrainTest {
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, t) =>
-                    v.ToString().Contains("OnDeactivateAsync") && v.ToString().Contains("Test reason")),
+                    v.ToString()!.Contains("OnDeactivateAsync") && v.ToString()!.Contains("Test reason")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
