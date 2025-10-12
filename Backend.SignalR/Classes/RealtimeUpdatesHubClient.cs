@@ -10,15 +10,11 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>> logger
     ) : base(orleansClient, logger) { }
 
-    public Task Debug(string message) {
-        Logger.LogDebug("Debug message received from '{ContextConnectionId}': {Message}", Context.ConnectionId,
-            message);
-        return Task.CompletedTask;
-    }
-
     public async Task RegisterPlayerGrain(string playerName) {
-        Logger.LogDebug("RegisterPlayerGrain received from '{ContextConnectionId}': {PlayerName}",
-            Context.ConnectionId, playerName);
+        Logger.LogDebug(
+            "RegisterPlayerGrain received from '{ContextConnectionId}': {PlayerName}",
+            Context.ConnectionId,
+            playerName);
 
         Context.Items["PlayerName"] = playerName;
 
@@ -33,7 +29,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             await playerRegistry.AddPlayer(playerName, newPlayerGuid);
             playerGrain = OrleansClient.GetGrain<IPlayerGrain>(newPlayerGuid);
         } else {
-            Logger.LogDebug("Existing player grain found for player name '{PlayerName}' in PlayerRegistry.", playerName);
+            Logger.LogDebug(
+                "Existing player grain found for player name '{PlayerName}' in PlayerRegistry.",
+                playerName);
         }
 
         await playerGrain.Initialize(Context.ConnectionId, playerName);
@@ -42,7 +40,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
     }
 
     public async Task<long?> GetCurrentChunkId(string playerName) {
-        Logger.LogDebug("GetCurrentChunk received from '{ContextConnectionId}': {PlayerName}", Context.ConnectionId,
+        Logger.LogDebug(
+            "GetCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
+            Context.ConnectionId,
             playerName);
 
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
@@ -52,12 +52,15 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
 
-        return currentChunk.GetPrimaryKeyLong();
+        return await currentChunk.GetKey();
     }
 
     public async Task MoveToChunk(string playerName, int newChunkId) {
-        Logger.LogDebug("MoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
-            Context.ConnectionId, playerName, newChunkId);
+        Logger.LogDebug(
+            "MoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
+            Context.ConnectionId,
+            playerName,
+            newChunkId);
 
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
         if (playerGrain == null) {
@@ -69,8 +72,10 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
     }
 
     public async Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(string playerName) {
-        Logger.LogDebug("GetPlayersInCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
-            Context.ConnectionId, playerName);
+        Logger.LogDebug(
+            "GetPlayersInCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
+            Context.ConnectionId,
+            playerName);
 
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
         if (playerGrain == null) {
@@ -83,10 +88,13 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         List<PlayerListMessage> messages = [];
         foreach (IPlayerGrain player in playersInChunk) {
             SerializableVector2 position = await player.GetPosition();
-            messages.Add(new PlayerListMessage {
-                Id = player.GetPrimaryKeyString(), Name = await player.GetName(), PositionX = position.X,
-                PositionY = position.Y
-            });
+            messages.Add(
+                new PlayerListMessage {
+                    Id = await player.GetKey(),
+                    Name = await player.GetName(),
+                    PositionX = position.X,
+                    PositionY = position.Y
+                });
         }
 
         return messages;
@@ -97,10 +105,11 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         IPlayerGrain? existingPlayerGrain = await playerRegistry.FindPlayerByName(playerName);
         if (existingPlayerGrain == null) {
             Logger.LogError(
-                "Could not find player grain for player name '{PlayerName}' in the PlayerRegistry", playerName);
+                "Could not find player grain for player name '{PlayerName}' in the PlayerRegistry",
+                playerName);
             return null;
         }
-        
+
         return existingPlayerGrain;
     }
 }

@@ -1,5 +1,6 @@
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
+using Backend.SignalR.SharedContracts;
 using Microsoft.Extensions.Logging;
 
 namespace Backend.Orleans.GrainClasses;
@@ -8,16 +9,17 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private readonly IPersistentState<PlayerState> _playerState;
     private readonly ILogger<PlayerGrain> _logger;
     private string? _realtimeUpdatesConnectionId;
-    private readonly RealtimeUpdatesSingleton _realtimeUpdatesSingleton;
+    private readonly IRealtimeUpdatesOrleans _realtimeUpdates;
 
     public PlayerGrain(
         [PersistentState("player", "tableStore")]
         IPersistentState<PlayerState> playerState,
-        ILogger<PlayerGrain> logger
+        ILogger<PlayerGrain> logger,
+        IRealtimeUpdatesOrleans realtimeUpdates
     ) : base(logger) {
         _playerState = playerState;
         _logger = logger;
-        _realtimeUpdatesSingleton = RealtimeUpdatesSingleton.Instance;
+        _realtimeUpdates = realtimeUpdates;
     }
 
     public override async Task OnActivateAsync(CancellationToken cancellationToken) {
@@ -102,12 +104,14 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         return Task.CompletedTask;
     }
 
+    public Task<string> GetKey() => Task.FromResult(this.GetPrimaryKeyString());
+
     public async Task JoinRealtimeUpdatesGroup(string groupName) {
         if (_realtimeUpdatesConnectionId == null) {
             return;
         }
 
-        await _realtimeUpdatesSingleton.OrleansProxy.AddToGroupAsync(groupName, _realtimeUpdatesConnectionId);
+        await _realtimeUpdates.AddToGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
     public async Task LeaveRealtimeUpdatesGroup(string groupName) {
@@ -115,7 +119,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             return;
         }
 
-        await _realtimeUpdatesSingleton.OrleansProxy.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
+        await _realtimeUpdates.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
     public Task StartMovementTimer() {
@@ -140,7 +144,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await _playerState.WriteStateAsync();
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
 
-        await _realtimeUpdatesSingleton.OrleansProxy.PlayerMovementUpdate(
+        await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
             newPosition.X,

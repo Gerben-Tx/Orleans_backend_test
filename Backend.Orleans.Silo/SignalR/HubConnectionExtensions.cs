@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Backend.Orleans.GrainClasses.SignalR;
+namespace Backend.Orleans.Silo.SignalR;
 
 public static partial class HubConnectionExtensions
 {

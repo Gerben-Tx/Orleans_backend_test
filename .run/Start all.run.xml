@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Start all" type="CompoundRunConfigurationType">
+    <toRun name="Player (john)" type="RunExe" />
+    <toRun name="OrleansTest.SignalR: http" type="LaunchSettings" />
+    <toRun name="OrleansTest.Silo" type="DotNetProject" />
+    <method v="2" />
+  </configuration>
+</component>

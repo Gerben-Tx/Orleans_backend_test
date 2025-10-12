@@ -1,9 +1,9 @@
 using System.Linq;
 using Backend.SignalR.SharedContracts;
 using Godot;
-using RandomFriendlyNameGenerator;
 
 #if DEBUG
+using RandomFriendlyNameGenerator;
 using Client.Godot.Classes.Debug;
 using CommandLine;
 #endif

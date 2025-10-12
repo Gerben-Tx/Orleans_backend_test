@@ -1,9 +1,12 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
-using Client.Godot.Classes.Debug;
-using CommandLine;
 using Godot;
+
+#if DEBUG
+using CommandLine;
+using Client.Godot.Classes.Debug;
+#endif
 
 namespace Client.Godot.Classes;
 
