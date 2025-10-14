@@ -10,7 +10,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>> logger
     ) : base(orleansClient, logger) { }
 
-    public async Task RegisterPlayerGrain(string playerName) {
+    public async Task RegisterPlayerGrain(
+        string playerName
+    ) {
         Logger.LogDebug(
             "RegisterPlayerGrain received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
@@ -39,7 +41,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         Logger.LogDebug("Done registering player grain");
     }
 
-    public async Task<long?> GetCurrentChunkId(string playerName) {
+    public async Task<long?> GetCurrentChunkId(
+        string playerName
+    ) {
         Logger.LogDebug(
             "GetCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
@@ -55,7 +59,10 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         return await currentChunk.GetKey();
     }
 
-    public async Task MoveToChunk(string playerName, int newChunkId) {
+    public async Task MoveToChunk(
+        string playerName,
+        int newChunkId
+    ) {
         Logger.LogDebug(
             "MoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
             Context.ConnectionId,
@@ -71,7 +78,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         await playerGrain.EnterChunk(newChunkGrain);
     }
 
-    public async Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(string playerName) {
+    public async Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(
+        string playerName
+    ) {
         Logger.LogDebug(
             "GetPlayersInCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
@@ -100,7 +109,9 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         return messages;
     }
 
-    private async Task<IPlayerGrain?> FindPlayerInRegistry(string playerName) {
+    private async Task<IPlayerGrain?> FindPlayerInRegistry(
+        string playerName
+    ) {
         IPlayerRegistry playerRegistry = OrleansClient.GetGrain<IPlayerRegistry>(Guid.Empty);
         IPlayerGrain? existingPlayerGrain = await playerRegistry.FindPlayerByName(playerName);
         if (existingPlayerGrain == null) {
