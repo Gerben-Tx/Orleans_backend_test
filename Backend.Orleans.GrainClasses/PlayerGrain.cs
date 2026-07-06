@@ -90,6 +90,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Leave the realtime updates group for this chunk
         string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
+        
+        // Persist state
+        // Mainly for persisting position, which we don't need to do every tick.
+        await _playerState.WriteStateAsync();
     }
 
     public Task<IWorldChunkGrain> GetCurrentChunk() {
@@ -113,7 +117,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         // Move player to his last known chunk
         await EnterChunk(await GetCurrentChunk());
-        await StartMovementTimer(); // Disabled for now, since we are testing pathfinding
+        await StartMovementTimer();
     }
 
     public Task<SerializableVector2> GetPosition() {
@@ -152,79 +156,59 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await _realtimeUpdates.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
+    /// <summary>
+    /// Starts a timer that sends random movement updates to the client.
+    /// This is just for testing purposes. Eventually, the client should be able to choose its own movement.
+    /// </summary>
+    /// <returns></returns>
     public Task StartMovementTimer() {
         this.RegisterGrainTimer(
             // SendRandomMovementUpdate,
             SendPathMovementUpdate,
-            new GrainTimerCreationOptions(TimeSpan.FromSeconds(0), TimeSpan.FromMilliseconds(250))
-                { Interleave = true, KeepAlive = true });
+            new GrainTimerCreationOptions(
+                TimeSpan.FromSeconds(0),
+                TimeSpan.FromMilliseconds(250)
+            ) { Interleave = true, KeepAlive = true }
+        );
 
         return Task.CompletedTask;
     }
 
-    private async Task SendRandomMovementUpdate() {
-        // Send random movement updates to clients as a test
-        _logger.LogDebug("Sending random movement update...");
-
-        Random rand = new();
-        SerializableVector2 newPosition = new(
-            rand.Next(-WorldChunkGrain.SizeX / 2, WorldChunkGrain.SizeX / 2),
-            rand.Next(-WorldChunkGrain.SizeY / 2, WorldChunkGrain.SizeY / 2)
-        );
-
-        _playerState.State.Position = newPosition;
-        await _playerState.WriteStateAsync();
-        IWorldChunkGrain currentChunk = await GetCurrentChunk();
-
-        await _realtimeUpdates.PlayerMovementUpdate(
-            await currentChunk.GetRealtimeUpdatesGroupName(),
-            this.GetPrimaryKeyString(),
-            newPosition.X,
-            newPosition.Y
-        );
-    }
-
     private async Task SendPathMovementUpdate() {
-        // TODO: Handle chunk transitions
-        
+        // TODO: Handle transitioning between chunks with a single path
+
         if (_path.Count == 0) {
             _logger.LogDebug("No path found, creating new path...");
             Random rand = new();
             Path? path = await _pathFindingService.FindPath(
                 _playerState.State.Position.ToVector2(),
                 new Vector2(
-                    // TODO: Get the destination from the client
-                    rand.Next(0, WorldChunkGrain.SizeX),
-                    rand.Next(0, WorldChunkGrain.SizeY)
+                    // TODO: For now we use random coords, but we should get the destination from the client
+                    rand.Next(0, WorldChunkGrain.SizeX - 1),
+                    rand.Next(0, WorldChunkGrain.SizeY - 1)
                 )
             );
             if (path is null) {
                 _logger.LogWarning("Could not find a path!");
                 return;
             }
+        
             foreach (IEdge? edge in path.Edges) {
                 _path.Enqueue(new SerializableVector2((int)edge.End.Position.X, (int)edge.End.Position.Y));
             }
         }
         
-        _logger.LogDebug("Sending path movement update...");
-
-        SerializableVector2 newPosition = _path.Dequeue();
-
-        // TODO: This is saving way too many times. This will:
-        //  - Overwhelm Azure Table Storage
-        //  - Add significant latency
-        //  - Cost money unnecessarily
-        //  - Slow down your game
-        //  Only save on important events, like:
-        //  - Player disconnects
-        //  - Chunk transitions
-        //  - ...?
-        //  OR
-        //  Save using a timer that runs every X time.
-        _playerState.State.Position = newPosition;
-        await _playerState.WriteStateAsync();
+        // If we somehow have no path, just return
+        if (_path.Count == 0) {
+            _logger.LogWarning("Path is empty!");
+            return;
+        }
         
+        _logger.LogDebug("Sending path movement update...");
+        
+        SerializableVector2 newPosition = _path.Dequeue();
+        _playerState.State.Position = newPosition;
+
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
         await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),

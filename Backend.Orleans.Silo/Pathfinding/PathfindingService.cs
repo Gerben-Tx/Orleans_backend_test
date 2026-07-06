@@ -24,7 +24,8 @@ public class PathfindingService : IPathfindingService {
         Path? path = pathFinder.FindPath(
             new GridPosition((int)start.X, (int)start.Y),
             new GridPosition((int)end.X, (int)end.Y),
-            grid);
+            grid
+        );
 
         return Task.FromResult<Path?>(path);
     }
