@@ -1,3 +1,4 @@
+using System.Numerics;
 using Backend.Orleans.GrainClasses;
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
@@ -5,6 +6,10 @@ using Backend.SignalR.SharedContracts;
 using JetBrains.Annotations;
 using Moq;
 using Orleans.TestKit;
+using Roy_T.AStar.Graphs;
+using Roy_T.AStar.Paths;
+using Roy_T.AStar.Primitives;
+using Path = Roy_T.AStar.Paths.Path;
 
 namespace Tests.Backend.Orleans.GrainClasses;
 
@@ -514,12 +519,31 @@ public class PlayerGrainTest : TestKitBase {
         long chunkId = 0L;
         string chunkGroupName = "Chunk Group";
         SerializableVector2 oldPosition = new SerializableVector2(0, 0);
+        SerializableVector2 nextPosition = new SerializableVector2(10, 10);
 
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        
+        Mock<IPathfindingService> pathfindingServiceMock = Silo.AddServiceProbe<IPathfindingService>();
+        pathfindingServiceMock.Setup(x => x.FindPath(
+                oldPosition.ToVector2(),
+                It.IsAny<Vector2>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(
+                Task.FromResult<Path?>(
+                    new Path(
+                        PathType.Complete,
+                        new[] {
+                            new Edge(
+                                new Node(new Position(oldPosition.X, oldPosition.Y)),
+                                new Node(new Position(nextPosition.X, nextPosition.Y)),
+                                It.IsAny<Velocity>()
+                            )
+                        })))
+            .Verifiable(Times.AtLeastOnce);
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(chunkGroupName, connectionId))
@@ -531,7 +555,7 @@ public class PlayerGrainTest : TestKitBase {
                 It.IsAny<int>()))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.AtLeastOnce);
-
+        
         PlayerState initialState = new PlayerState {
             Name = playerName,
             Position = oldPosition
@@ -546,6 +570,7 @@ public class PlayerGrainTest : TestKitBase {
         await Silo.FireAllTimersAsync();
 
         // Assert
+        pathfindingServiceMock.Verify();
         realtimeUpdatesMock.Verify();
         
         // Verify that the position was updated

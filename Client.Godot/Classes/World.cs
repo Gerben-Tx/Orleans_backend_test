@@ -12,6 +12,7 @@ namespace Client.Godot.Classes;
 
 public partial class World : Node3D, IRealtimeUpdatesClient {
     private RandomNumberGenerator _randomNumberGenerator = new RandomNumberGenerator();
+    private MeshInstance3D _groundNode;
 
     public async override void _Ready() {
         base._Ready();
@@ -27,6 +28,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             });
 #endif
 
+        _groundNode = GetNode<MeshInstance3D>("%Ground");
+        
         // Subscribe to realtime updates
         GD.Print("Subscribing to realtime updates...");
         ServerCommunicator.Instance.ClientRegistration(this);
@@ -49,7 +52,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             await ServerCommunicator.Instance.HubProxy.GetPlayersInCurrentChunk(ServerCommunicator.Instance.PlayerName);
         GD.Print($"Players in chunk: {playersInChunk.Count}");
         foreach (PlayerListMessage playerListMessage in playersInChunk) {
-            CreatePlayer(playerListMessage.Id, playerListMessage.Name,
+            CreatePlayer(
+                playerListMessage.Id,
+                playerListMessage.Name,
                 new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
         }
     }
@@ -67,7 +72,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GetTree().ChangeSceneToFile("res://world.tscn");
     }
 
-    private void CreatePlayer(string playerId, string playerName, Vector2 playerPosition) {
+    private void CreatePlayer(
+        string playerId,
+        string playerName,
+        Vector2 playerPosition
+    ) {
         if (FindPlayer(playerId) != null) {
             return; // Player already exists
         }
@@ -87,7 +96,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerNode.Owner = playersNode;
     }
 
-    private void DeletePlayer(string playerId) {
+    private void DeletePlayer(
+        string playerId
+    ) {
         Node playerNode = FindPlayer(playerId);
         if (playerNode == null) {
             return;
@@ -99,46 +110,75 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playersNode.RemoveChild(playerNode);
     }
 
-    private Node FindPlayer(string playerId) {
+    private Node FindPlayer(
+        string playerId
+    ) {
         Node playersNode = GetNode<Node>("%Players");
         return playersNode.FindChild(playerId);
     }
 
-    private void UpdatePlayer(string playerId, int posX, int posY) {
+    private void UpdatePlayer(
+        string playerId,
+        int posX,
+        int posY
+    ) {
         Node playersNode = GetNode<Node>("%Players");
         Node3D playerNode = (Node3D)playersNode.FindChild(playerId);
         if (playerNode == null) {
             return;
         }
 
-        playerNode.Position = new Vector3(posX, 0, posY);
+        Aabb groundAabb = _groundNode.Mesh.GetAabb();
+        playerNode.Position = new Vector3(posX - (groundAabb.Size.X/2), 0, posY - (groundAabb.Size.Z/2));
     }
 
-    private void HandlePlayerMovementUpdate(string playerId, int posX, int posY) {
+    private void HandlePlayerMovementUpdate(
+        string playerId,
+        int posX,
+        int posY
+    ) {
         UpdatePlayer(playerId, posX, posY);
     }
 
-    private void HandlePlayerAddedToChunk(string playerId, string playerName, int posX, int posY) {
+    private void HandlePlayerAddedToChunk(
+        string playerId,
+        string playerName,
+        int posX,
+        int posY
+    ) {
         CreatePlayer(playerId, playerName, new Vector2(posX, posY));
     }
 
-    private void HandlePlayerRemovedFromChunk(string playerId) {
+    private void HandlePlayerRemovedFromChunk(
+        string playerId
+    ) {
         DeletePlayer(playerId);
     }
 
-    public Task PlayerMovementUpdate(string playerId, int posX, int posY) {
+    public Task PlayerMovementUpdate(
+        string playerId,
+        int posX,
+        int posY
+    ) {
         GD.Print($"debug PlayerMovementUpdate: {playerId}, {posX}, {posY}");
         CallDeferred(nameof(HandlePlayerMovementUpdate), playerId, posX, posY);
         return Task.CompletedTask;
     }
 
-    public Task PlayerAddedToChunk(string playerId, string playerName, int posX, int posY) {
+    public Task PlayerAddedToChunk(
+        string playerId,
+        string playerName,
+        int posX,
+        int posY
+    ) {
         GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}, ({posX},{posY})");
         CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, posX, posY);
         return Task.CompletedTask;
     }
 
-    public Task PlayerRemovedFromChunk(string playerId) {
+    public Task PlayerRemovedFromChunk(
+        string playerId
+    ) {
         GD.Print($"debug PlayerRemovedFromChunk: {playerId}");
         CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId);
         return Task.CompletedTask;

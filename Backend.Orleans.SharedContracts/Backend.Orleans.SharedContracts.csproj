@@ -8,6 +8,7 @@
 
     <ItemGroup>
       <PackageReference Include="Microsoft.Orleans.Sdk" Version="9.2.1" />
+      <PackageReference Include="RoyT.AStar" Version="3.0.2" />
     </ItemGroup>
 
 </Project>
