@@ -175,15 +175,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     }
 
     private async Task SendPathMovementUpdate() {
-        // TODO: Handle transitioning between chunks with a single path
-
         if (_path.Count == 0) {
             _logger.LogDebug("No path found, creating new path...");
             Random rand = new();
             Path? path = await _pathFindingService.FindPath(
                 _playerState.State.Position.ToVector2(),
                 new Vector2(
-                    // TODO: For now we use random coords, but we should get the destination from the client
+                    // TODO: For now we use random coords, but we should eventually get the destination from the client
                     rand.Next(0, WorldChunkGrain.SizeX - 1),
                     rand.Next(0, WorldChunkGrain.SizeY - 1)
                 )
