@@ -34,6 +34,8 @@ public class PlayerGrainTest : TestKitBase {
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName))
             .Verifiable(Times.Exactly(1));
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         // Create the realtime updates mock
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
@@ -79,6 +81,8 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(chunkGroupName, connectionId))
@@ -115,6 +119,8 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), existingPlayerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(chunkGroupName, connectionId))
@@ -153,6 +159,8 @@ public class PlayerGrainTest : TestKitBase {
         currentChunkMock.Setup(x => x.RemovePlayer(It.IsAny<string>(), playerName))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to EnterChunk
+        currentChunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IWorldChunkGrain> targetChunkMock = Silo.AddProbe<IWorldChunkGrain>(targetChunkId);
         targetChunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
@@ -160,6 +168,8 @@ public class PlayerGrainTest : TestKitBase {
         targetChunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
+        targetChunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.RemoveFromGroupAsync(currentChunkGroupName, connectionId))
@@ -244,6 +254,8 @@ public class PlayerGrainTest : TestKitBase {
         chunkMock.Setup(x => x.RemovePlayer(It.IsAny<string>(), playerName))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Exactly(2)); // Once due to Initialize, once due to LeaveChunk
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.RemoveFromGroupAsync(chunkGroupName, connectionId))
@@ -375,6 +387,8 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(groupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(groupName, connectionId))
@@ -437,6 +451,8 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(groupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock.Setup(x => x.AddToGroupAsync(groupName, connectionId))
@@ -526,6 +542,10 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult(chunkGroupName));
         chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
             .Returns(Task.CompletedTask);
+        chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<long?>()))
+            .Returns(Task.FromResult(new WorldChunkNeighbors()));
+        chunkMock.Setup(x => x.GetPositionByChunkId(It.IsAny<long?>()))
+            .Returns(Task.FromResult<WorldChunkGrainPosition?>(new WorldChunkGrainPosition(0, 0)));
         
         Mock<IPathfindingService> pathfindingServiceMock = Silo.AddServiceProbe<IPathfindingService>();
         pathfindingServiceMock.Setup(x => x.FindPath(

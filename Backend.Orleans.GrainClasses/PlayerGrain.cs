@@ -74,8 +74,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             await JoinRealtimeUpdatesGroup(chunkGroupName);
             
             // Join realtime updates group for neighboring chunks
-            WorldChunkNeighbors neighbors = await targetChunk.GetNeighboringChunks();
-            foreach (WorldChunkNeighbor? neighbor in neighbors.ToArray()) {
+            WorldChunkNeighbors? neighbors = await targetChunk.GetNeighboringChunks();
+            foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
                 if (neighbor == null) {
                     continue;
                 }
@@ -104,8 +104,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
         
         // Leave realtime updates group for neighboring chunks
-        WorldChunkNeighbors neighbors = await chunk.GetNeighboringChunks();
-        foreach (WorldChunkNeighbor? neighbor in neighbors.ToArray()) {
+        WorldChunkNeighbors? neighbors = await chunk.GetNeighboringChunks();
+        foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
             if (neighbor == null) {
                 continue;
             }
@@ -233,7 +233,11 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
         WorldChunkGrainPosition? position = await currentChunk.GetPositionByChunkId();
-        // TODO: handle null position
+        if (position == null) {
+            _logger.LogWarning("Could not find position for chunk {ChunkId}!", currentChunk.GetKey());
+            return;
+        }
+
         await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
