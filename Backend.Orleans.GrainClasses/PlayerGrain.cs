@@ -74,16 +74,19 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             await JoinRealtimeUpdatesGroup(chunkGroupName);
             
             // Join realtime updates group for neighboring chunks
+            List<Task> parallelizeTasks = [];
             WorldChunkNeighbors? neighbors = await targetChunk.GetNeighboringChunks();
             foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
                 if (neighbor == null) {
                     continue;
                 }
                 
-                await JoinRealtimeUpdatesGroup(
+                parallelizeTasks.Add(JoinRealtimeUpdatesGroup(
                     await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
-                );
+                ));
             }
+
+            await Task.WhenAll(parallelizeTasks);
         }
 
         // Update new chunk id in state
@@ -104,16 +107,18 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
         
         // Leave realtime updates group for neighboring chunks
+        List<Task> parallelizeTasks = [];
         WorldChunkNeighbors? neighbors = await chunk.GetNeighboringChunks();
         foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
             if (neighbor == null) {
                 continue;
             }
                 
-            await LeaveRealtimeUpdatesGroup(
+            parallelizeTasks.Add(LeaveRealtimeUpdatesGroup(
                 await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
-            );
+            ));
         }
+        await Task.WhenAll(parallelizeTasks);
         
         // Persist state
         // Mainly for persisting position, which we don't need to do every tick.
