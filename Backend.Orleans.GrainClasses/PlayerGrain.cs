@@ -72,6 +72,18 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             // Join realtime updates group for this chunk
             string chunkGroupName = await targetChunk.GetRealtimeUpdatesGroupName();
             await JoinRealtimeUpdatesGroup(chunkGroupName);
+            
+            // Join realtime updates group for neighboring chunks
+            WorldChunkNeighbors neighbors = await targetChunk.GetNeighboringChunks();
+            foreach (WorldChunkNeighbor? neighbor in neighbors.ToArray()) {
+                if (neighbor == null) {
+                    continue;
+                }
+                
+                await JoinRealtimeUpdatesGroup(
+                    await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
+                );
+            }
         }
 
         // Update new chunk id in state
@@ -90,6 +102,18 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Leave the realtime updates group for this chunk
         string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
+        
+        // Leave realtime updates group for neighboring chunks
+        WorldChunkNeighbors neighbors = await chunk.GetNeighboringChunks();
+        foreach (WorldChunkNeighbor? neighbor in neighbors.ToArray()) {
+            if (neighbor == null) {
+                continue;
+            }
+                
+            await LeaveRealtimeUpdatesGroup(
+                await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
+            );
+        }
         
         // Persist state
         // Mainly for persisting position, which we don't need to do every tick.
@@ -208,11 +232,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         _playerState.State.Position = newPosition;
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
+        WorldChunkGrainPosition? position = await currentChunk.GetPositionByChunkId();
+        // TODO: handle null position
         await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
-            newPosition.X,
-            newPosition.Y
+            newPosition.X + (position.X * WorldChunkGrain.SizeX),
+            newPosition.Y + (position.Y * WorldChunkGrain.SizeY)
         );
     }
 }

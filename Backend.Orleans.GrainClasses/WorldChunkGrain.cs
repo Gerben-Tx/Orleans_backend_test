@@ -2,6 +2,7 @@ using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
 using Microsoft.Extensions.Logging;
+using WorldChunkNeighbor = Backend.Orleans.SharedContracts.WorldChunkNeighbor;
 
 namespace Backend.Orleans.GrainClasses;
 
@@ -77,59 +78,69 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         return Task.FromResult(players);
     }
 
-    public static WorldChunkGrainPosition? GetPositionByChunkId(
-        long chunkId
+    public async Task<WorldChunkGrainPosition?> GetPositionByChunkId(
+        long? chunkId = null
     ) {
+        if (chunkId == null) {
+            chunkId = await GetKey();
+        }
+        
         int x = (int)(chunkId % WorldSizeX);
         int y = (int)((chunkId - x) / WorldSizeX);
 
-        return IsPositionWithinBounds(new WorldChunkGrainPosition(x, y)) ? new WorldChunkGrainPosition(x, y) : null;
+        bool withinBounds = await IsPositionWithinBounds(new WorldChunkGrainPosition(x, y));
+        return withinBounds ? new WorldChunkGrainPosition(x, y) : null;
     }
 
-    public static long? GetChunkIdByPosition(
+    public async Task<long?> GetChunkIdByPosition(
         WorldChunkGrainPosition position
     ) {
-        return IsPositionWithinBounds(position) ? position.Y * WorldSizeX + position.X : null;
+        bool withinBounds = await IsPositionWithinBounds(position);
+        return withinBounds ? position.Y * WorldSizeX + position.X : null;
     }
 
-    public static bool IsPositionWithinBounds(
+    private static Task<bool> IsPositionWithinBounds(
         WorldChunkGrainPosition position
     ) {
-        if (position.X < 0 || position.X >= WorldSizeX) {
-            return false;
-        }
-
-        if (position.Y < 0 || position.Y >= WorldSizeY) {
-            return false;
-        }
-
-        return true;
+        return Task.FromResult(
+            position.X >= 0
+            && position.X < WorldSizeX
+            && position.Y >= 0
+            && position.Y < WorldSizeY
+        );
     }
 
-    public Task<WorldChunkNeighbors> GetNeighboringChunks(
-        long chunkId
+    public async Task<WorldChunkNeighbors> GetNeighboringChunks(
+        long? chunkId = null
     ) {
-        WorldChunkGrainPosition? pos = GetPositionByChunkId(chunkId);
+        if (chunkId == null) {
+            chunkId = await GetKey();
+        }
+        
+        WorldChunkGrainPosition? pos = await GetPositionByChunkId(chunkId);
         if (pos == null) {
             _logger.LogWarning("No position found for chunk id: {chunkId}", chunkId);
-            return Task.FromResult(new WorldChunkNeighbors());
+            return new WorldChunkNeighbors();
         }
 
-        WorldChunkNeighbor? GetNeighbor(int dx, int dy) {
+        async Task<WorldChunkNeighbor?> GetNeighbor(
+            int dx,
+            int dy
+        ) {
             WorldChunkGrainPosition nPos = new(pos.X + dx, pos.Y + dy);
-            long? nId = GetChunkIdByPosition(nPos);
+            long? nId = await GetChunkIdByPosition(nPos);
             return nId.HasValue ? new WorldChunkNeighbor(nId.Value, nPos) : null;
         }
 
-        return Task.FromResult(new WorldChunkNeighbors(
-            GetNeighbor(0, -1),
-            GetNeighbor(1, -1),
-            GetNeighbor(1, 0),
-            GetNeighbor(1, 1),
-            GetNeighbor(0, 1),
-            GetNeighbor(-1, 1),
-            GetNeighbor(-1, 0),
-            GetNeighbor(-1, -1)
-        ));
+        return new WorldChunkNeighbors(
+            await GetNeighbor(0, -1),
+            await GetNeighbor(1, -1),
+            await GetNeighbor(1, 0),
+            await GetNeighbor(1, 1),
+            await GetNeighbor(0, 1),
+            await GetNeighbor(-1, 1),
+            await GetNeighbor(-1, 0),
+            await GetNeighbor(-1, -1)
+        );
     }
 }

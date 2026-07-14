@@ -6,9 +6,11 @@ namespace Backend.SignalR.SharedContracts;
 public interface IRealtimeUpdatesHub {
     Task RegisterPlayerGrain(string playerName);
 
-    Task<long?> GetCurrentChunkId(string playerName);
+    Task<WorldChunk> GetCurrentChunk(string playerName);
 
     Task MoveToChunk(string playerName, int newChunkId);
 
-    Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(string playerName);
+    Task<List<PlayerListMessage>> GetPlayersInChunk(string playerName, long chunkId);
+
+    Task<WorldChunkNeighborsMessage> GetNeighboringChunks(string playerName);
 }

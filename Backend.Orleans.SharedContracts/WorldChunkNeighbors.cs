@@ -10,4 +10,8 @@ public record WorldChunkNeighbors(
     [property: Id(5)] WorldChunkNeighbor? SouthWest = null,
     [property: Id(6)] WorldChunkNeighbor? West = null,
     [property: Id(7)] WorldChunkNeighbor? NorthWest = null
-);
+) {
+    public WorldChunkNeighbor?[] ToArray() {
+        return [North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest];
+    }
+}

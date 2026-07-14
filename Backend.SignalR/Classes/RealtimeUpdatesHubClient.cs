@@ -1,6 +1,7 @@
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
+using Orleans.Concurrency;
 
 namespace Backend.SignalR.Classes;
 
@@ -41,7 +42,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         Logger.LogDebug("Done registering player grain");
     }
 
-    public async Task<long?> GetCurrentChunkId(
+    public async Task<WorldChunk> GetCurrentChunk(
         string playerName
     ) {
         Logger.LogDebug(
@@ -55,8 +56,16 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
+        WorldChunkGrainPosition? position = await currentChunk.GetPositionByChunkId();
+        if (position == null) {
+            return null;
+        }
 
-        return await currentChunk.GetKey();
+        return new WorldChunk(
+            await currentChunk.GetKey(),
+            position.X,
+            position.Y
+        );
     }
 
     public async Task MoveToChunk(
@@ -78,11 +87,12 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         await playerGrain.EnterChunk(newChunkGrain);
     }
 
-    public async Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(
-        string playerName
+    public async Task<List<PlayerListMessage>> GetPlayersInChunk(
+        string playerName,
+        long chunkId
     ) {
         Logger.LogDebug(
-            "GetPlayersInCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
+            "GetPlayersInChunk received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
             playerName);
 
@@ -92,7 +102,19 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
-        List<IPlayerGrain> playersInChunk = await currentChunk.GetAllPlayers();
+        List<IPlayerGrain> playersInChunk = [];
+        if (chunkId == await currentChunk.GetKey()) {
+            playersInChunk = await currentChunk.GetAllPlayers();
+        } else {
+            WorldChunkNeighbors neighbors = await currentChunk.GetNeighboringChunks();
+            WorldChunkNeighbor? matchingNeighbor = neighbors.ToArray().FirstOrDefault(neighbor => neighbor?.Id == chunkId);
+
+            if (matchingNeighbor != null) {
+                IWorldChunkGrain neighborChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(matchingNeighbor.Id);
+                playersInChunk = await neighborChunkGrain.GetAllPlayers();
+            }
+        }
+
 
         List<PlayerListMessage> messages = [];
         foreach (IPlayerGrain player in playersInChunk) {
@@ -107,6 +129,74 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         return messages;
+    }
+
+    public async Task<WorldChunkNeighborsMessage> GetNeighboringChunks(
+        string playerName
+    ) {
+        Logger.LogDebug(
+            "GetNeighboringChunks received from '{ContextConnectionId}': {PlayerName}",
+            Context.ConnectionId,
+            playerName);
+
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return new WorldChunkNeighborsMessage();
+        }
+
+        IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
+        WorldChunkNeighbors neighbors = await currentChunk.GetNeighboringChunks(await currentChunk.GetKey());
+
+        return new WorldChunkNeighborsMessage(
+            neighbors.North != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.North.Id,
+                    neighbors.North.Position.X,
+                    neighbors.North.Position.Y)
+                : null,
+            neighbors.NorthEast != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.NorthEast.Id,
+                    neighbors.NorthEast.Position.X,
+                    neighbors.NorthEast.Position.Y)
+                : null,
+            neighbors.East != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.East.Id,
+                    neighbors.East.Position.X,
+                    neighbors.East.Position.Y)
+                : null,
+            neighbors.SouthEast != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.SouthEast.Id,
+                    neighbors.SouthEast.Position.X,
+                    neighbors.SouthEast.Position.Y)
+                : null,
+            neighbors.South != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.South.Id,
+                    neighbors.South.Position.X,
+                    neighbors.South.Position.Y)
+                : null,
+            neighbors.SouthWest != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.SouthWest.Id,
+                    neighbors.SouthWest.Position.X,
+                    neighbors.SouthWest.Position.Y)
+                : null,
+            neighbors.West != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.West.Id,
+                    neighbors.West.Position.X,
+                    neighbors.West.Position.Y)
+                : null,
+            neighbors.NorthWest != null
+                ? new SharedContracts.WorldChunk(
+                    neighbors.NorthWest.Id,
+                    neighbors.NorthWest.Position.X,
+                    neighbors.NorthWest.Position.Y)
+                : null
+        );
     }
 
     private async Task<IPlayerGrain?> FindPlayerInRegistry(

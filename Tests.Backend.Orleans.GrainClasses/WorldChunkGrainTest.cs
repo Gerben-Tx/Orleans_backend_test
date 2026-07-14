@@ -5,6 +5,7 @@ using Backend.SignalR.SharedContracts;
 using JetBrains.Annotations;
 using Moq;
 using Orleans.TestKit;
+using WorldChunkNeighbor = Backend.Orleans.SharedContracts.WorldChunkNeighbor;
 
 namespace Tests.Backend.Orleans.GrainClasses;
 
@@ -139,15 +140,16 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1,
         WorldChunkGrain.WorldSizeX - 1,
         WorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
-    public void GetPositionByChunkId_ShouldReturnCorrectPosition(
+    public async Task GetPositionByChunkId_ShouldReturnCorrectPosition(
         long chunkId,
         int expectedX,
         int expectedY
     ) {
         // Arrange
-
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+        
         // Act
-        WorldChunkGrainPosition? position = WorldChunkGrain.GetPositionByChunkId(chunkId);
+        WorldChunkGrainPosition? position = await grain.GetPositionByChunkId(chunkId);
 
         // Assert
         Assert.Equal($"{expectedX},{expectedY}", $"{position?.X},{position?.Y}");
