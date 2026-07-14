@@ -1,16 +1,20 @@
-[gd_scene load_steps=2 format=3 uid="uid://ccxw8utb2xflx"]
+[gd_scene format=3 uid="uid://ccxw8utb2xflx"]
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_0rwas"]
 
-[node name="Player" type="Node3D"]
+[node name="Player" type="Node3D" unique_id=167333337]
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=880964458]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 mesh = SubResource("CapsuleMesh_0rwas")
 
-[node name="PlayerNameLabel" type="Label3D" parent="."]
+[node name="PlayerNameLabel" type="Label3D" parent="." unique_id=630666423]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.26381, 0)
 pixel_size = 0.025
 billboard = 1
 text = "{playerName}"
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1018605617]
+transform = Transform3D(1, 0, 0, 0, 0.82114923, 0.57071364, 0, -0.57071364, 0.82114923, 0, 14.255, 25)
+visible = false
