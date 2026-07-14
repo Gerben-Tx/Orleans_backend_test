@@ -97,23 +97,14 @@ public class WorldChunkGrainTest : TestKitBase {
                 It.IsAny<int>()))
             .Returns(Task.CompletedTask);
 
-        // Mock cluster client to return player grain references
-        Mock<IClusterClient> clusterClientMock = Silo.AddServiceProbe<IClusterClient>();
-
         Guid p1 = Guid.NewGuid();
         Guid p2 = Guid.NewGuid();
         string k1 = p1.ToString();
         string k2 = p2.ToString();
 
-        var player1Mock = new Mock<IPlayerGrain>();
-        var player2Mock = new Mock<IPlayerGrain>();
-
-        clusterClientMock.Setup(x => x.GetGrain<IPlayerGrain>(p1, null))
-            .Returns(player1Mock.Object)
-            .Verifiable(Times.Once);
-        clusterClientMock.Setup(x => x.GetGrain<IPlayerGrain>(p2, null))
-            .Returns(player2Mock.Object)
-            .Verifiable(Times.Once);
+        // Mock player grains
+        Mock<IPlayerGrain> player1Mock = Silo.AddProbe<IPlayerGrain>(p1);
+        Mock<IPlayerGrain> player2Mock = Silo.AddProbe<IPlayerGrain>(p2);
 
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
@@ -128,12 +119,117 @@ public class WorldChunkGrainTest : TestKitBase {
         Assert.Equal(2, players.Count);
         Assert.Contains(player1Mock.Object, players);
         Assert.Contains(player2Mock.Object, players);
-        clusterClientMock.Verify();
     }
 
     [Fact]
     public void SizeConstants_ShouldBe30() {
         Assert.Equal(30, WorldChunkGrain.SizeX);
         Assert.Equal(30, WorldChunkGrain.SizeY);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0)] // Top left corner
+    [InlineData(WorldChunkGrain.WorldSizeX, 0, 1)] // First one, second row
+    [InlineData(WorldChunkGrain.WorldSizeX - 1, 9, 0)] // Top right corner
+    [InlineData(
+        (WorldChunkGrain.WorldSizeX - 1) * WorldChunkGrain.WorldSizeY,
+        0,
+        WorldChunkGrain.WorldSizeY - 1)] // Bottom left corner
+    [InlineData(
+        WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1,
+        WorldChunkGrain.WorldSizeX - 1,
+        WorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
+    public void GetPositionByChunkId_ShouldReturnCorrectPosition(
+        long chunkId,
+        int expectedX,
+        int expectedY
+    ) {
+        // Arrange
+
+        // Act
+        WorldChunkGrainPosition? position = WorldChunkGrain.GetPositionByChunkId(chunkId);
+
+        // Assert
+        Assert.Equal($"{expectedX},{expectedY}", $"{position?.X},{position?.Y}");
+    }
+
+    [Fact]
+    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsTopLeft() {
+        // Arrange
+        long chunkId = 0;
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+
+        // Assert
+        Assert.Null(neighbors.North);
+        Assert.Null(neighbors.NorthEast);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.East);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthEast);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
+        Assert.Null(neighbors.SouthWest);
+        Assert.Null(neighbors.West);
+        Assert.Null(neighbors.NorthWest);
+    }
+
+    [Fact]
+    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsTopRight() {
+        // Arrange
+        long chunkId = WorldChunkGrain.WorldSizeX - 1;
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+
+        // Assert
+        Assert.Null(neighbors.North);
+        Assert.Null(neighbors.NorthEast);
+        Assert.Null(neighbors.East);
+        Assert.Null(neighbors.SouthEast);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthWest);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
+        Assert.Null(neighbors.NorthWest);
+    }
+
+    [Fact]
+    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsBottomRight() {
+        // Arrange
+        long chunkId = WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1;
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+
+        // Assert
+        Assert.IsType<WorldChunkNeighbor>(neighbors.North);
+        Assert.Null(neighbors.NorthEast);
+        Assert.Null(neighbors.East);
+        Assert.Null(neighbors.SouthEast);
+        Assert.Null(neighbors.South);
+        Assert.Null(neighbors.SouthWest);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthWest);
+    }
+
+    [Fact]
+    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsCenter() {
+        // Arrange
+        long chunkId = (WorldChunkGrain.WorldSizeX / 2) * (WorldChunkGrain.WorldSizeY / 2);
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+
+        // Assert
+        Assert.IsType<WorldChunkNeighbor>(neighbors.North);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthEast);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.East);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthEast);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthWest);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
+        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthWest);
     }
 }
