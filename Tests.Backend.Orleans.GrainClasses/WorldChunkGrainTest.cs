@@ -164,7 +164,7 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
 
         // Assert
         Assert.Equal(3, neighbors.Length);
@@ -180,7 +180,7 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
 
         // Assert
         Assert.Equal(3, neighbors.Length);
@@ -196,7 +196,7 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
 
         // Assert
         Assert.Equal(3, neighbors.Length);
@@ -212,7 +212,7 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
 
         // Assert
         Assert.Equal(8, neighbors.Length);

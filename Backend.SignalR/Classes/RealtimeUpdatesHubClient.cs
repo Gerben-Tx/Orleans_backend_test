@@ -106,7 +106,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (chunkId == await currentChunk.GetKey()) {
             playersInChunk = await currentChunk.GetAllPlayers();
         } else {
-            WorldChunkNeighbor[] neighbors = await currentChunk.GetNeighboringChunks();
+            WorldChunkNeighbor[] neighbors = await currentChunk.GetNeighboringChunks(await playerGrain.GetChunkVisibilityRadius());
             WorldChunkNeighbor? matchingNeighbor =
                 neighbors.ToArray().FirstOrDefault(neighbor => neighbor?.Id == chunkId);
 
@@ -133,7 +133,8 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
     }
 
     public async Task<WorldChunkNeighborsMessage> GetNeighboringChunks(
-        string playerName
+        string playerName,
+        int radius
     ) {
         Logger.LogDebug(
             "GetNeighboringChunks received from '{ContextConnectionId}': {PlayerName}",
@@ -144,13 +145,14 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (playerGrain == null) {
             return new WorldChunkNeighborsMessage([]);
         }
+        playerGrain.SetChunkVisibilityRadius(radius);
 
-        IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
-        WorldChunkNeighbor[] neighbors = await currentChunk.GetNeighboringChunks(await currentChunk.GetKey());
+        IWorldChunkGrain currentChunkGrain = await playerGrain.GetCurrentChunk();
+        WorldChunkNeighbor[] allNeighbors = await currentChunkGrain.GetNeighboringChunks(radius);
 
         return new WorldChunkNeighborsMessage(
-            neighbors.ToList().Select(neighbor =>
-                    new WorldChunk(neighbor!.Id, neighbor.Position.X, neighbor.Position.Y)
+            allNeighbors.Select(neighbor =>
+                    new WorldChunk(neighbor.Id, neighbor.Position.X, neighbor.Position.Y)
                 )
                 .ToArray()
         );

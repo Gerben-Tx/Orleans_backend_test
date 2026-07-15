@@ -12,5 +12,5 @@ public interface IRealtimeUpdatesHub {
 
     Task<List<PlayerListMessage>> GetPlayersInChunk(string playerName, long chunkId);
 
-    Task<WorldChunkNeighborsMessage> GetNeighboringChunks(string playerName);
+    Task<WorldChunkNeighborsMessage> GetNeighboringChunks(string playerName, int radius);
 }

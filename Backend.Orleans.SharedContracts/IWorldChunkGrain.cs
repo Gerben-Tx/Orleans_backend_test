@@ -9,7 +9,8 @@ public interface IWorldChunkGrain : IGrainWithIntegerKey {
     public Task<string> GetRealtimeUpdatesGroupName();
     public Task<long> GetKey();
     public Task<bool> IsPlayerInChunk(string playerGrainKey);
-    public Task<WorldChunkNeighbor[]> GetNeighboringChunks(long? chunkId = null);
+    public Task<WorldChunkNeighbor[]> GetNeighboringChunksById(long? chunkId = null);
+    public Task<WorldChunkNeighbor[]> GetNeighboringChunks(int radius);
     public Task<WorldChunkGrainPosition?> GetPositionByChunkId(long? chunkId = null);
     public Task<long?> GetChunkIdByPosition(WorldChunkGrainPosition position);
 }

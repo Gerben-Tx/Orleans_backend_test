@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -13,6 +12,8 @@ using Client.Godot.Classes.Debug;
 namespace Client.Godot.Classes;
 
 public partial class World : Node3D, IRealtimeUpdatesClient {
+    private const int ChunkVisibilityRadius = 2;
+    
     private RandomNumberGenerator _randomNumberGenerator = new RandomNumberGenerator();
     private MeshInstance3D _groundNode;
     private WorldChunk _currentChunk;
@@ -54,7 +55,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         // Get neighboring chunks
         GD.Print("Requesting neighboring chunks...");
         WorldChunkNeighborsMessage chunkNeighborsMessage =
-            await ServerCommunicator.Instance.HubProxy.GetNeighboringChunks(ServerCommunicator.Instance.PlayerName);
+            await ServerCommunicator.Instance.HubProxy.GetNeighboringChunks(ServerCommunicator.Instance.PlayerName, ChunkVisibilityRadius);
         GD.Print(
             $"Neighboring Chunks: {string.Join(",", chunkNeighborsMessage.Chunks.Select(chunk => $"(id: {chunk.ChunkId}, x: {chunk.X}, y: {chunk.Y})"))}");
         InstantiateGroundChunks(chunkNeighborsMessage.Chunks, _currentChunk);

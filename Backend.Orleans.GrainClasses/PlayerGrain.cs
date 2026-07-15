@@ -15,6 +15,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private readonly IRealtimeUpdatesOrleans _realtimeUpdates;
     private readonly IPathfindingService _pathFindingService;
     private readonly Queue<SerializableVector2> _path = new();
+    private int _chunkVisibileRadius = 1;
 
     public PlayerGrain(
         [PersistentState("player", "tableStore")]
@@ -75,11 +76,12 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             
             // Join realtime updates group for neighboring chunks
             List<Task> parallelizeTasks = [];
-            WorldChunkNeighbor[] neighbors = await targetChunk.GetNeighboringChunks();
+            WorldChunkNeighbor[] neighbors = await targetChunk.GetNeighboringChunks(_chunkVisibileRadius);
             foreach (WorldChunkNeighbor neighbor in neighbors) {
-                parallelizeTasks.Add(JoinRealtimeUpdatesGroup(
-                    await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
-                ));
+                parallelizeTasks.Add(
+                    JoinRealtimeUpdatesGroup(
+                        await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
+                    ));
             }
 
             await Task.WhenAll(parallelizeTasks);
@@ -101,21 +103,23 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Leave the realtime updates group for this chunk
         string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
-        
+
         // Leave realtime updates group for neighboring chunks
         List<Task> parallelizeTasks = [];
-        WorldChunkNeighbor?[] neighbors = await chunk.GetNeighboringChunks();
+        WorldChunkNeighbor?[] neighbors = await chunk.GetNeighboringChunks(_chunkVisibileRadius);
         foreach (WorldChunkNeighbor? neighbor in neighbors) {
             if (neighbor == null) {
                 continue;
             }
-                
-            parallelizeTasks.Add(LeaveRealtimeUpdatesGroup(
-                await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
-            ));
+
+            parallelizeTasks.Add(
+                LeaveRealtimeUpdatesGroup(
+                    await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
+                ));
         }
+
         await Task.WhenAll(parallelizeTasks);
-        
+
         // Persist state
         // Mainly for persisting position, which we don't need to do every tick.
         await _playerState.WriteStateAsync();
@@ -160,6 +164,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     }
 
     public Task<string> GetKey() => Task.FromResult(this.GetPrimaryKeyString());
+    public Task<int> GetChunkVisibilityRadius() => Task.FromResult(_chunkVisibileRadius);
+
+    public void SetChunkVisibilityRadius(
+        int radius
+    ) {
+        _chunkVisibileRadius = radius;
+    }
 
     public async Task JoinRealtimeUpdatesGroup(
         string groupName
@@ -215,20 +226,20 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
                 _logger.LogWarning("Could not find a path!");
                 return;
             }
-        
+
             foreach (IEdge? edge in path.Edges) {
                 _path.Enqueue(new SerializableVector2((int)edge.End.Position.X, (int)edge.End.Position.Y));
             }
         }
-        
+
         // If we somehow have no path, just return
         if (_path.Count == 0) {
             _logger.LogWarning("Path is empty!");
             return;
         }
-        
+
         _logger.LogDebug("Sending path movement update...");
-        
+
         SerializableVector2 newPosition = _path.Dequeue();
         _playerState.State.Position = newPosition;
 
