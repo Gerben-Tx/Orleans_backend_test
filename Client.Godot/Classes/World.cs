@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
@@ -55,12 +56,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         WorldChunkNeighborsMessage chunkNeighborsMessage =
             await ServerCommunicator.Instance.HubProxy.GetNeighboringChunks(ServerCommunicator.Instance.PlayerName);
         GD.Print(
-            $"Neighboring Chunks: {chunkNeighborsMessage.North}, {chunkNeighborsMessage.NorthEast}, {chunkNeighborsMessage.East}, {chunkNeighborsMessage.SouthEast}, {chunkNeighborsMessage.South}, {chunkNeighborsMessage.SouthWest}, {chunkNeighborsMessage.West}, {chunkNeighborsMessage.NorthWest}");
-        InstantiateGroundChunks(chunkNeighborsMessage.ToArray(), _currentChunk);
+            $"Neighboring Chunks: {string.Join(",", chunkNeighborsMessage.Chunks.Select(chunk => $"(id: {chunk.ChunkId}, x: {chunk.X}, y: {chunk.Y})"))}");
+        InstantiateGroundChunks(chunkNeighborsMessage.Chunks, _currentChunk);
 
         // Load all players in chunk
         GD.Print("Requesting players in all visible chunks...");
-        List<WorldChunk> allChunksList = new(chunkNeighborsMessage.ToArray());
+        List<WorldChunk> allChunksList = new(chunkNeighborsMessage.Chunks);
         allChunksList.Add(_currentChunk);
         WorldChunk[] allChunks = allChunksList.ToArray();
         foreach (WorldChunk chunk in allChunks) {

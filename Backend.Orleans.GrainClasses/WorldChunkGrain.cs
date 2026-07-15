@@ -110,7 +110,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         );
     }
 
-    public async Task<WorldChunkNeighbors> GetNeighboringChunks(
+    public async Task<WorldChunkNeighbor[]> GetNeighboringChunks(
         long? chunkId = null
     ) {
         if (chunkId == null) {
@@ -120,7 +120,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         WorldChunkGrainPosition? pos = await GetPositionByChunkId(chunkId);
         if (pos == null) {
             _logger.LogWarning("No position found for chunk id: {chunkId}", chunkId);
-            return new WorldChunkNeighbors();
+            return [];
         }
 
         async Task<WorldChunkNeighbor?> GetNeighbor(
@@ -132,15 +132,25 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             return nId.HasValue ? new WorldChunkNeighbor(nId.Value, nPos) : null;
         }
 
-        return new WorldChunkNeighbors(
-            await GetNeighbor(0, -1),
-            await GetNeighbor(1, -1),
-            await GetNeighbor(1, 0),
-            await GetNeighbor(1, 1),
-            await GetNeighbor(0, 1),
-            await GetNeighbor(-1, 1),
-            await GetNeighbor(-1, 0),
-            await GetNeighbor(-1, -1)
-        );
+        List<WorldChunkNeighbor> ret = [];
+        (int X, int Y)[] offsets = [
+            (0, -1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+            (0, 1),
+            (-1, 1),
+            (-1, 0),
+            (-1, -1),
+        ];
+        foreach ((int X, int Y) offset in offsets) {
+            WorldChunkNeighbor? chunkNeighbor = await GetNeighbor(offset.X, offset.Y);
+            if (chunkNeighbor == null) {
+                continue;
+            }
+            ret.Add(chunkNeighbor);
+        }
+        
+        return ret.ToArray();
     }
 }

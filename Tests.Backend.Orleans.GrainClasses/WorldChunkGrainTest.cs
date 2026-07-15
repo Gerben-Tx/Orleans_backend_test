@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Backend.Orleans.GrainClasses;
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
@@ -156,23 +157,20 @@ public class WorldChunkGrainTest : TestKitBase {
     }
 
     [Fact]
+    [SuppressMessage("ReSharper", "UselessBinaryOperation")]
     public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsTopLeft() {
         // Arrange
         long chunkId = 0;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
 
         // Assert
-        Assert.Null(neighbors.North);
-        Assert.Null(neighbors.NorthEast);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.East);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthEast);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
-        Assert.Null(neighbors.SouthWest);
-        Assert.Null(neighbors.West);
-        Assert.Null(neighbors.NorthWest);
+        Assert.Equal(3, neighbors.Length);
+        Assert.Equal(chunkId + 1, neighbors[0].Id); // East
+        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, neighbors[1].Id); // SouthEast
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[2].Id); // South
     }
 
     [Fact]
@@ -182,17 +180,13 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
 
         // Assert
-        Assert.Null(neighbors.North);
-        Assert.Null(neighbors.NorthEast);
-        Assert.Null(neighbors.East);
-        Assert.Null(neighbors.SouthEast);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthWest);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
-        Assert.Null(neighbors.NorthWest);
+        Assert.Equal(3, neighbors.Length);
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[0].Id); // South
+        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, neighbors[1].Id); // SouthWest
+        Assert.Equal(chunkId - 1, neighbors[2].Id); // West
     }
 
     [Fact]
@@ -202,17 +196,13 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
 
         // Assert
-        Assert.IsType<WorldChunkNeighbor>(neighbors.North);
-        Assert.Null(neighbors.NorthEast);
-        Assert.Null(neighbors.East);
-        Assert.Null(neighbors.SouthEast);
-        Assert.Null(neighbors.South);
-        Assert.Null(neighbors.SouthWest);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthWest);
+        Assert.Equal(3, neighbors.Length);
+        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, neighbors[0].Id); // North
+        Assert.Equal(chunkId - 1, neighbors[1].Id); // West
+        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, neighbors[2].Id); // NorthWest
     }
 
     [Fact]
@@ -222,16 +212,17 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbors neighbors = await grain.GetNeighboringChunks(chunkId);
+        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunks(chunkId);
 
         // Assert
-        Assert.IsType<WorldChunkNeighbor>(neighbors.North);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthEast);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.East);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthEast);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.South);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.SouthWest);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.West);
-        Assert.IsType<WorldChunkNeighbor>(neighbors.NorthWest);
+        Assert.Equal(8, neighbors.Length);
+        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, neighbors[0].Id); // North
+        Assert.Equal(chunkId + 1 - WorldChunkGrain.WorldSizeX, neighbors[1].Id); // NorthEast
+        Assert.Equal(chunkId + 1, neighbors[2].Id); // East
+        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, neighbors[3].Id); // SouthEast
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[4].Id); // South
+        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, neighbors[5].Id); // SouthWest
+        Assert.Equal(chunkId - 1, neighbors[6].Id); // West
+        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, neighbors[7].Id); // NorthWest
     }
 }

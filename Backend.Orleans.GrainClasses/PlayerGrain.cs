@@ -75,12 +75,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             
             // Join realtime updates group for neighboring chunks
             List<Task> parallelizeTasks = [];
-            WorldChunkNeighbors? neighbors = await targetChunk.GetNeighboringChunks();
-            foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
-                if (neighbor == null) {
-                    continue;
-                }
-                
+            WorldChunkNeighbor[] neighbors = await targetChunk.GetNeighboringChunks();
+            foreach (WorldChunkNeighbor neighbor in neighbors) {
                 parallelizeTasks.Add(JoinRealtimeUpdatesGroup(
                     await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
                 ));
@@ -108,8 +104,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         
         // Leave realtime updates group for neighboring chunks
         List<Task> parallelizeTasks = [];
-        WorldChunkNeighbors? neighbors = await chunk.GetNeighboringChunks();
-        foreach (WorldChunkNeighbor? neighbor in neighbors?.ToArray() ?? Array.Empty<WorldChunkNeighbor>()) {
+        WorldChunkNeighbor?[] neighbors = await chunk.GetNeighboringChunks();
+        foreach (WorldChunkNeighbor? neighbor in neighbors) {
             if (neighbor == null) {
                 continue;
             }
