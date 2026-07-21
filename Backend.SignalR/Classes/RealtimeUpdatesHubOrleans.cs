@@ -33,10 +33,10 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
             .PlayerAddedToChunk(playerId, playerName, posX, posY);
     }
 
-    public async Task PlayerRemovedFromChunk(string groupName, string playerId) {
+    public async Task PlayerRemovedFromChunk(string groupName, string playerId, long chunkId) {
         Logger.LogDebug($"PlayerRemovedFromChunk received: {groupName}, {playerId}");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerRemovedFromChunk(playerId);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerRemovedFromChunk(playerId, chunkId);
     }
 
     public async Task AddToGroupAsync(string groupName, string connectionId) {

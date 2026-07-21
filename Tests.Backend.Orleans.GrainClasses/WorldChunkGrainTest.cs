@@ -51,7 +51,7 @@ public class WorldChunkGrainTest : TestKitBase {
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock
-            .Setup(x => x.PlayerRemovedFromChunk(groupName, playerKey))
+            .Setup(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId))
             .Returns(Task.CompletedTask);
 
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
@@ -59,16 +59,16 @@ public class WorldChunkGrainTest : TestKitBase {
         // Act & Assert
         // Removing an absent player should do nothing
         await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(It.IsAny<string>(), It.IsAny<string>(), chunkId), Times.Never);
 
         // Add then remove -> should notify once
         await grain.AddPlayer(playerKey, playerName, position);
         await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey), Times.Once);
+        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
 
         // Removing again should still be ignored
         await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey), Times.Once);
+        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
     }
 
     [Fact]

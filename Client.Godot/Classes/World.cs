@@ -285,9 +285,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     public Task PlayerRemovedFromChunk(
-        string playerId
+        string playerId,
+        long chunkId
     ) {
-        GD.Print($"debug PlayerRemovedFromChunk: {playerId}");
+        GD.Print($"debug PlayerRemovedFromChunk {chunkId}: {playerId}");
         CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId);
         return Task.CompletedTask;
     }

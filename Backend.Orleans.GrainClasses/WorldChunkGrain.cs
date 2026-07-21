@@ -57,7 +57,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
 
         _players.Remove(playerGrainKey);
 
-        await _realtimeUpdates.PlayerRemovedFromChunk(_groupName, playerGrainKey);
+        await _realtimeUpdates.PlayerRemovedFromChunk(_groupName, playerGrainKey, await GetKey());
     }
 
     public Task<string> GetRealtimeUpdatesGroupName() => Task.FromResult(_groupName);

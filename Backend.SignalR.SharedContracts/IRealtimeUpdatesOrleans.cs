@@ -6,7 +6,7 @@ namespace Backend.SignalR.SharedContracts;
 public interface IRealtimeUpdatesOrleans {
     Task PlayerMovementUpdate(string groupName, string playerId, int posX, int posY);
     Task PlayerAddedToChunk(string groupName, string playerId, string playerName, int posX, int posY);
-    Task PlayerRemovedFromChunk(string groupName, string playerId);
+    Task PlayerRemovedFromChunk(string groupName, string playerId, long chunkId);
     Task AddToGroupAsync(string groupName, string connectionId);
     Task RemoveFromGroupAsync(string groupName, string connectionId);
 }

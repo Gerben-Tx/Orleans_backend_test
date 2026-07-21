@@ -60,8 +60,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
             _logger.LogDebug(
                 "Moving player from chunk {CurrentChunkId} to chunk {NewChunkId}",
-                currentChunk.GetKey(),
-                targetChunk.GetKey()
+                await currentChunk.GetKey(),
+                await targetChunk.GetKey()
             );
 
             // Exit from the current chunk
