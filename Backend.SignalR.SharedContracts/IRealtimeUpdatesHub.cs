@@ -8,7 +8,14 @@ public interface IRealtimeUpdatesHub {
 
     Task<WorldChunk> GetCurrentChunk(string playerName);
 
-    Task MoveToChunk(string playerName, int newChunkId);
+    /// <summary>
+    /// Move the player to a new chunk.
+    /// This is temporary and will be removed once the player is able to choose its own path.
+    /// </summary>
+    /// <param name="playerName"></param>
+    /// <param name="newChunkId"></param>
+    /// <returns></returns>
+    Task DebugMoveToChunk(string playerName, int newChunkId);
 
     Task<List<PlayerListMessage>> GetPlayersInChunk(string playerName, long chunkId);
 

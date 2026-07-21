@@ -189,7 +189,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.MoveToChunk(PlayerName, newChunkId);
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
 
         // Assert
         _orleansClientMock.Verify();
@@ -222,7 +222,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.MoveToChunk(PlayerName, newChunkId);
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
 
         // Assert
         _orleansClientMock.Verify();

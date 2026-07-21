@@ -269,4 +269,26 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             newPosition.Y + (currentChunkPosition.Y * WorldChunkGrain.SizeY)
         );
     }
+
+    public async Task DebugMoveToChunk(IWorldChunkGrain chunkGrain) {
+        // Make sure we are not following a path anymore
+        _path.Clear();
+
+        // Enter the chunk
+        // Do this before moving the player, so that we can get the chunk position.
+        // Otherwise, the chunk might be outside the "visible radius"
+        await EnterChunk(chunkGrain);
+        
+        // Move player to the center of the chunk
+        WorldChunkGrainPosition? chunkGrainPosition = await chunkGrain.GetPosition();
+        if (chunkGrainPosition == null) {
+            _logger.LogWarning("Could not find position for chunk {ChunkId}!", chunkGrain.GetKey());
+            return;
+        }
+        _playerState.State.Position = new SerializableVector2(
+            chunkGrainPosition.X * (WorldChunkGrain.SizeX / 2),
+            chunkGrainPosition.Y * (WorldChunkGrain.SizeY / 2)
+        ); 
+        await _playerState.WriteStateAsync();
+    }
 }

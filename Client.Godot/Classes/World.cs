@@ -26,7 +26,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             .WithParsed(o => {
                 if (o.Chunk != null) {
                     GD.Print($"Chunk auto join enabled, chunk id: {o.Chunk}");
-                    ServerCommunicator.Instance.HubProxy.MoveToChunk(
+                    ServerCommunicator.Instance.HubProxy.DebugMoveToChunk(
                         ServerCommunicator.Instance.PlayerName,
                         (int)o.Chunk);
                 }
@@ -169,7 +169,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         int newChunkId = int.Parse(newChunkIdInput.Text);
 
         GD.Print($"Moving to new chunk '{newChunkId}'...");
-        await ServerCommunicator.Instance.HubProxy.MoveToChunk(ServerCommunicator.Instance.PlayerName, newChunkId);
+        await ServerCommunicator.Instance.HubProxy.DebugMoveToChunk(ServerCommunicator.Instance.PlayerName, newChunkId);
 
         // Reload scene to join new chunk
         // GetTree().ChangeSceneToFile("res://world.tscn");

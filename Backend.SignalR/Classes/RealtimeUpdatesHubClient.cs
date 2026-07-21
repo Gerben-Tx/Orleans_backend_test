@@ -68,7 +68,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         );
     }
 
-    public async Task MoveToChunk(
+    public async Task DebugMoveToChunk(
         string playerName,
         int newChunkId
     ) {
@@ -84,7 +84,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain newChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(newChunkId);
-        await playerGrain.EnterChunk(newChunkGrain);
+        await playerGrain.DebugMoveToChunk(newChunkGrain);
     }
 
     public async Task<List<PlayerListMessage>> GetPlayersInChunk(
