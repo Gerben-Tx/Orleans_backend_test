@@ -286,8 +286,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             return;
         }
         _playerState.State.Position = new SerializableVector2(
-            chunkGrainPosition.X * (WorldChunkGrain.SizeX / 2),
-            chunkGrainPosition.Y * (WorldChunkGrain.SizeY / 2)
+            (chunkGrainPosition.X * WorldChunkGrain.SizeX) + (WorldChunkGrain.SizeX / 2),
+            (chunkGrainPosition.Y * WorldChunkGrain.SizeY) + (WorldChunkGrain.SizeY / 2)
         ); 
         await _playerState.WriteStateAsync();
     }

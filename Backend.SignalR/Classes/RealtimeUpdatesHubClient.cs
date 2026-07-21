@@ -73,7 +73,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         int newChunkId
     ) {
         Logger.LogDebug(
-            "MoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
+            "DebugMoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
             Context.ConnectionId,
             playerName,
             newChunkId);
