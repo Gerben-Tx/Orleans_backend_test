@@ -239,7 +239,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         _playerState.State.Position = newPosition;
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
-        WorldChunkGrainPosition? currentChunkPosition = await currentChunk.GetPositionByChunkId();
+        WorldChunkGrainPosition? currentChunkPosition = await currentChunk.GetPosition();
         if (currentChunkPosition == null) {
             _logger.LogWarning("Could not find position for chunk {ChunkId}!", currentChunk.GetKey());
             return;

@@ -56,7 +56,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
-        WorldChunkGrainPosition? position = await currentChunk.GetPositionByChunkId();
+        WorldChunkGrainPosition? position = await currentChunk.GetPosition();
         if (position == null) {
             return null;
         }

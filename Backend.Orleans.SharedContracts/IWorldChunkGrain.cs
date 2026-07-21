@@ -11,6 +11,7 @@ public interface IWorldChunkGrain : IGrainWithIntegerKey {
     public Task<bool> IsPlayerInChunk(string playerGrainKey);
     public Task<WorldChunkNeighbor[]> GetNeighboringChunksById(long? chunkId = null);
     public Task<WorldChunkNeighbor[]> GetNeighboringChunks(int radius);
-    public Task<WorldChunkGrainPosition?> GetPositionByChunkId(long? chunkId = null);
+    public Task<WorldChunkGrainPosition?> GetPosition();
+    public Task<WorldChunkGrainPosition?> GetPositionByChunkId(long chunkId);
     public Task<long?> GetChunkIdByPosition(WorldChunkGrainPosition position);
 }

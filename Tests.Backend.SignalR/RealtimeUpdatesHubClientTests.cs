@@ -134,7 +134,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         currentChunkMock.Setup(x => x.GetKey())
             .Returns(Task.FromResult(currentChunkPrimaryKey))
             .Verifiable(Times.Once);
-        currentChunkMock.Setup(x => x.GetPositionByChunkId(null))
+        currentChunkMock.Setup(x => x.GetPosition())
             .Returns(Task.FromResult<WorldChunkGrainPosition?>(new WorldChunkGrainPosition(0, 0)))
             .Verifiable(Times.Once);
 

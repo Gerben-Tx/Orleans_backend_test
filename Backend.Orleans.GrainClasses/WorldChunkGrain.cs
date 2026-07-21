@@ -79,13 +79,14 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         return Task.FromResult(players);
     }
 
+    public async Task<WorldChunkGrainPosition?> GetPosition() {
+        long chunkId = await GetKey();
+        return await GetPositionByChunkId(chunkId);
+    }
+
     public async Task<WorldChunkGrainPosition?> GetPositionByChunkId(
-        long? chunkId = null
+        long chunkId
     ) {
-        if (chunkId == null) {
-            chunkId = await GetKey();
-        }
-        
         int x = (int)(chunkId % WorldSizeX);
         int y = (int)((chunkId - x) / WorldSizeX);
 
@@ -117,8 +118,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         if (chunkId == null) {
             chunkId = await GetKey();
         }
-        
-        WorldChunkGrainPosition? pos = await GetPositionByChunkId(chunkId);
+
+        WorldChunkGrainPosition? pos = await GetPositionByChunkId(chunkId.Value);
         if (pos == null) {
             _logger.LogWarning("No position found for chunk id: {chunkId}", chunkId);
             return [];
@@ -149,9 +150,10 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             if (chunkNeighbor == null) {
                 continue;
             }
+
             ret.Add(chunkNeighbor);
         }
-        
+
         return ret.ToArray();
     }
 
@@ -160,7 +162,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     ) {
         // Use Breadth-First Search (BFS) to find all neighboring chunks within the specified radius.
         // This ensures we discover all reachable chunks layer by layer (radius 1, then radius 2, etc.).
-        
+
         // Track visited chunk IDs to avoid redundant processing and prevent infinite loops 
         // caused by back-references between neighboring chunks. 
         // We initialize it with the current chunk ID so it's excluded from the results.
@@ -173,14 +175,15 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             // Fetch neighbors for all chunks in the current layer in parallel.
             // This significantly reduces total latency compared to sequential requests,
             // especially when the radius is large or network latency is involved.
-            WorldChunkNeighbor[][] results = await Task.WhenAll(currentLayer.Select(id => GetNeighboringChunksById(id)));
-            
+            WorldChunkNeighbor[][] results =
+                await Task.WhenAll(currentLayer.Select(id => GetNeighboringChunksById(id)));
+
             List<long> nextLayer = [];
             foreach (WorldChunkNeighbor[] neighbors in results) {
                 foreach (WorldChunkNeighbor neighbor in neighbors) {
                     // Only process and return chunks we haven't seen yet in previous layers.
                     if (!visited.Add(neighbor.Id)) continue;
-                    
+
                     allNeighbors.Add(neighbor);
                     nextLayer.Add(neighbor.Id);
                 }

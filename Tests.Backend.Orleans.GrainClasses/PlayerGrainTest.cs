@@ -545,7 +545,7 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.CompletedTask);
         chunkMock.Setup(x => x.GetNeighboringChunks(It.IsAny<int>()))
             .Returns(Task.FromResult<WorldChunkNeighbor[]>([]));
-        chunkMock.Setup(x => x.GetPositionByChunkId(It.IsAny<long?>()))
+        chunkMock.Setup(x => x.GetPosition())
             .Returns(Task.FromResult<WorldChunkGrainPosition?>(new WorldChunkGrainPosition(0, 0)));
         
         Mock<IPathfindingService> pathfindingServiceMock = Silo.AddServiceProbe<IPathfindingService>();
