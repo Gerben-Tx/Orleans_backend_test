@@ -6,7 +6,7 @@ namespace Backend.SignalR.SharedContracts;
 public interface IRealtimeUpdatesHub {
     Task RegisterPlayerGrain(string playerName);
 
-    Task<WorldChunk> GetCurrentChunk(string playerName);
+    Task<WorldChunkContract> GetCurrentChunk(string playerName);
 
     /// <summary>
     /// Move the player to a new chunk.

@@ -42,7 +42,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         Logger.LogDebug("Done registering player grain");
     }
 
-    public async Task<WorldChunk> GetCurrentChunk(
+    public async Task<WorldChunkContract> GetCurrentChunk(
         string playerName
     ) {
         Logger.LogDebug(
@@ -61,7 +61,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             return null;
         }
 
-        return new WorldChunk(
+        return new WorldChunkContract(
             await currentChunk.GetKey(),
             position.X,
             position.Y
@@ -152,7 +152,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
         return new WorldChunkNeighborsMessage(
             allNeighbors.Select(neighbor =>
-                    new WorldChunk(neighbor.Id, neighbor.Position.X, neighbor.Position.Y)
+                    new WorldChunkContract(neighbor.Id, neighbor.Position.X, neighbor.Position.Y)
                 )
                 .ToArray()
         );
