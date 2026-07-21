@@ -7,6 +7,7 @@ using JetBrains.Annotations;
 using Moq;
 using Orleans.TestKit;
 using Roy_T.AStar.Graphs;
+using Roy_T.AStar.Grids;
 using Roy_T.AStar.Paths;
 using Roy_T.AStar.Primitives;
 using Path = Roy_T.AStar.Paths.Path;
@@ -548,6 +549,12 @@ public class PlayerGrainTest : TestKitBase {
             .Returns(Task.FromResult<WorldChunkGrainPosition?>(new WorldChunkGrainPosition(0, 0)));
         
         Mock<IPathfindingService> pathfindingServiceMock = Silo.AddServiceProbe<IPathfindingService>();
+        pathfindingServiceMock.Setup(x => x.GetGrid())
+            .Returns(Grid.CreateGridWithDiagonalConnections(
+                new GridSize(10, 10),
+                new Size(Distance.FromMeters(1), Distance.FromMeters(1)),
+                Velocity.FromMetersPerSecond(1.65F)
+            ));
         pathfindingServiceMock.Setup(x => x.FindPath(
                 oldPosition.ToVector2(),
                 It.IsAny<Vector2>(),
