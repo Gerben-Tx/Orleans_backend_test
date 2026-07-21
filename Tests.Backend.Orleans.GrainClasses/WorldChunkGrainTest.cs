@@ -24,7 +24,7 @@ public class WorldChunkGrainTest : TestKitBase {
         // Mock realtime updates service
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock
-            .Setup(x => x.PlayerAddedToChunk(groupName, playerKey, playerName, position.X, position.Y))
+            .Setup(x => x.PlayerAddedToChunk(groupName, playerKey, playerName, chunkId, position.X, position.Y))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
 
@@ -95,6 +95,7 @@ public class WorldChunkGrainTest : TestKitBase {
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<string>(),
+                chunkId,
                 It.IsAny<int>(),
                 It.IsAny<int>()))
             .Returns(Task.CompletedTask);

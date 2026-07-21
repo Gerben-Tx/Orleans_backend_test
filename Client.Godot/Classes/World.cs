@@ -49,9 +49,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             await ServerCommunicator.Instance.HubProxy.GetCurrentChunk(ServerCommunicator.Instance.PlayerName);
         long currentChunkId = _currentChunk.ChunkId;
         GD.Print($"Current Chunk ID: {currentChunkId}");
-        Label chunkLabel = GetNode<Label>("%ChunkLabel");
-        chunkLabel.Text = chunkLabel.Text.Replace("{id}", currentChunkId.ToString());
-        
+        UpdateChunkLabel(currentChunkId);
+
         // Get neighboring chunks
         GD.Print("Requesting neighboring chunks...");
         WorldChunkNeighborsMessage chunkNeighborsMessage =
@@ -82,6 +81,13 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                     new Vector2(playerListMessage.PositionX, playerListMessage.PositionY));
             }
         }
+    }
+
+    private void UpdateChunkLabel(
+        long currentChunkId
+    ) {
+        Label chunkLabel = GetNode<Label>("%ChunkLabel");
+        chunkLabel.Text = $"Chunk ID: {currentChunkId}";
     }
 
     private void InstantiateGroundChunks(
@@ -192,6 +198,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerNode.GetNode<Label3D>("%PlayerNameLabel").Text = playerName;
         playersNode.AddChild(playerNode);
         playerNode.Owner = playersNode;
+        
+        // Hacky way of making sure the correct camera is the "current".
+        // This should live in a player script instead.
+        if (IsClientPlayer(playerNode)) {
+            playerNode.GetNode<Camera3D>("Camera3D").Current = true;
+        }
     }
 
     private void DeletePlayer(
@@ -199,6 +211,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         Node playerNode = FindPlayer(playerId);
         if (playerNode == null) {
+            return;
+        }
+
+        if (IsClientPlayer((Node3D)playerNode)) {
+            // Don't delete the client player
             return;
         }
 
@@ -232,12 +249,20 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             0,
             posY - (groundAabb.Size.Z / 2)
         );
+    }
 
-        // Hacky way of making sure the correct camera is the "current".
-        // This should live in a player script instead.
-        if (playerNode.GetNode<Label3D>("%PlayerNameLabel").Text == ServerCommunicator.Instance.PlayerName) {
-            playerNode.GetNode<Camera3D>("Camera3D").Current = true;
-        }
+    /// <summary>
+    /// Hacky way of determining if a player is the client player.
+    /// This should live in a player script instead.
+    /// </summary>
+    /// <param name="playerNode"></param>
+    /// <returns>
+    /// true if the player is the client player.
+    /// </returns>
+    private static bool IsClientPlayer(
+        Node3D playerNode
+    ) {
+        return playerNode.GetNode<Label3D>("%PlayerNameLabel").Text == ServerCommunicator.Instance.PlayerName;
     }
 
     private void HandlePlayerMovementUpdate(
@@ -251,10 +276,16 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private void HandlePlayerAddedToChunk(
         string playerId,
         string playerName,
+        long chunkId,
         int posX,
         int posY
     ) {
         CreatePlayer(playerId, playerName, new Vector2(posX, posY));
+        
+        // Update the current chunk label
+        if (IsClientPlayer((Node3D)FindPlayer(playerId))) {
+            UpdateChunkLabel(chunkId);
+        }
     }
 
     private void HandlePlayerRemovedFromChunk(
@@ -276,11 +307,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     public Task PlayerAddedToChunk(
         string playerId,
         string playerName,
+        long chunkId,
         int posX,
         int posY
     ) {
-        GD.Print($"debug PlayerAddedToChunk: {playerId}, {playerName}, ({posX},{posY})");
-        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, posX, posY);
+        GD.Print($"debug PlayerAddedToChunk {chunkId}: {playerId}, {playerName}, ({posX},{posY})");
+        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, chunkId, posX, posY);
         return Task.CompletedTask;
     }
 

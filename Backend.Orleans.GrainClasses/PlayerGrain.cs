@@ -48,12 +48,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     public async Task EnterChunk(
         IWorldChunkGrain targetChunk
     ) {
-        // List<string> playersInChunk = await chunk.GetAllPlayers();
-        // string playerName = await GetPlayerName();
-        // if (playersInChunk.Find(x => x == playerName) != null) {
-        //     // Player is already in the new chunk, do nothing
-        //     return;
-        // }
         bool isPlayerInChunk = await targetChunk.IsPlayerInChunk(await GetKey());
         if (!isPlayerInChunk) {
             IWorldChunkGrain currentChunk = await GetCurrentChunk();
@@ -67,12 +61,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             // Exit from the current chunk
             await LeaveChunk(currentChunk);
 
-            // Enter the new chunk
-            await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
-
             // Join realtime updates group for this chunk
             string chunkGroupName = await targetChunk.GetRealtimeUpdatesGroupName();
             await JoinRealtimeUpdatesGroup(chunkGroupName);
+            
+            // Enter the new chunk
+            // Must be below JoinRealtimeUpdatesGroup, otherwise the client won't receive this update
+            await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
             
             // Join realtime updates group for neighboring chunks
             List<Task> parallelizeTasks = [];
@@ -99,7 +94,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     ) {
         // Leave the chunk
         await chunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
-
+        
         // Leave the realtime updates group for this chunk
         string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
         await LeaveRealtimeUpdatesGroup(chunkGroupName);
@@ -218,8 +213,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
                 _playerState.State.Position.ToVector2(),
                 new Vector2(
                     // TODO: For now we use random coords, but we should eventually get the destination from the client
-                    rand.Next(0, WorldChunkGrain.SizeX - 1),
-                    rand.Next(0, WorldChunkGrain.SizeY - 1)
+                    rand.Next(0, _pathFindingService.GetGrid().Columns),
+                    rand.Next(0, _pathFindingService.GetGrid().Rows)
                 )
             );
             if (path is null) {
@@ -238,23 +233,40 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             return;
         }
 
-        _logger.LogDebug("Sending path movement update...");
+        // _logger.LogDebug("Sending path movement update...");
 
         SerializableVector2 newPosition = _path.Dequeue();
         _playerState.State.Position = newPosition;
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
-        WorldChunkGrainPosition? position = await currentChunk.GetPositionByChunkId();
-        if (position == null) {
+        WorldChunkGrainPosition? currentChunkPosition = await currentChunk.GetPositionByChunkId();
+        if (currentChunkPosition == null) {
             _logger.LogWarning("Could not find position for chunk {ChunkId}!", currentChunk.GetKey());
             return;
         }
 
+        var newChunkPosition = new WorldChunkGrainPosition(
+            newPosition.X / WorldChunkGrain.SizeX,
+            newPosition.Y / WorldChunkGrain.SizeY
+        );
+        
+        // Enter new chunk if we cross borders
+        if (newChunkPosition != currentChunkPosition) {
+            _logger.LogDebug("Current chunk position: {CurrentChunkPosition} | New chunk position: {NewChunkPosition}", currentChunkPosition, newChunkPosition);
+            
+            long? newChunkId = await currentChunk.GetChunkIdByPosition(newChunkPosition);
+            if (newChunkId == null) {
+                _logger.LogWarning("Could not find chunk id for position {Position}!", newChunkPosition);
+                return;
+            }
+            await EnterChunk(GrainFactory.GetGrain<IWorldChunkGrain>(newChunkId.Value));
+        }
+        
         await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
-            newPosition.X + (position.X * WorldChunkGrain.SizeX),
-            newPosition.Y + (position.Y * WorldChunkGrain.SizeY)
+            newPosition.X + (currentChunkPosition.X * WorldChunkGrain.SizeX),
+            newPosition.Y + (currentChunkPosition.Y * WorldChunkGrain.SizeY)
         );
     }
 }

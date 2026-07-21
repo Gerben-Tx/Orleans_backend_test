@@ -41,6 +41,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             _groupName,
             playerGrainKey,
             playerName,
+            await GetKey(),
             playerPosition.X,
             playerPosition.Y
         );
