@@ -265,8 +265,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await _realtimeUpdates.PlayerMovementUpdate(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
-            newPosition.X + (currentChunkPosition.X * WorldChunkGrain.SizeX),
-            newPosition.Y + (currentChunkPosition.Y * WorldChunkGrain.SizeY)
+            newPosition.X,
+            newPosition.Y
         );
     }
 
