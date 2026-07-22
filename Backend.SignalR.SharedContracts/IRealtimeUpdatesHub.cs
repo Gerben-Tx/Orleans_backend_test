@@ -4,7 +4,7 @@ namespace Backend.SignalR.SharedContracts;
 /// Contains updates that are send from Client -> Server
 /// </summary>
 public interface IRealtimeUpdatesHub {
-    Task RegisterPlayerGrain(string playerName);
+    Task<string> RegisterPlayerGrain(string playerName);
 
     Task<WorldChunkContract> GetCurrentChunk(string playerName);
 

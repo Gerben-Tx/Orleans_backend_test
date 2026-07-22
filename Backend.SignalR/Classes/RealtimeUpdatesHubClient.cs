@@ -11,7 +11,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>> logger
     ) : base(orleansClient, logger) { }
 
-    public async Task RegisterPlayerGrain(
+    public async Task<string> RegisterPlayerGrain(
         string playerName
     ) {
         Logger.LogDebug(
@@ -40,6 +40,8 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         await playerGrain.Initialize(Context.ConnectionId, playerName);
 
         Logger.LogDebug("Done registering player grain");
+
+        return await playerGrain.GetKey();
     }
 
     public async Task<WorldChunkContract> GetCurrentChunk(

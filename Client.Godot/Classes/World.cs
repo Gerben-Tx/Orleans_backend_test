@@ -251,7 +251,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         // Hacky way of making sure the correct camera is the "current".
         // This should live in a player script instead.
-        if (IsClientPlayer(playerNode)) {
+        if (IsClientPlayer(playerId)) {
             playerNode.GetNode<Camera3D>("Camera3D").Current = true;
         }
     }
@@ -259,12 +259,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private void DeletePlayer(
         string playerId
     ) {
-        Node playerNode = FindPlayer(playerId);
+        Node? playerNode = FindPlayer(playerId);
         if (playerNode == null) {
             return;
         }
 
-        if (IsClientPlayer((Node3D)playerNode)) {
+        if (IsClientPlayer(playerId)) {
             // Don't delete the client player
             return;
         }
@@ -280,11 +280,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             .Remove(playerId);
     }
 
-    private Node FindPlayer(
+    private Node? FindPlayer(
         string playerId
     ) {
         Node playersNode = GetNode<Node>("%Players");
-        return playersNode.FindChild(playerId);
+        return playersNode.GetNodeOrNull(playerId);
     }
 
     private void UpdatePlayer(
@@ -310,15 +310,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     /// Hacky way of determining if a player is the client player.
     /// This should live in a player script instead.
     /// </summary>
-    /// <param name="playerNode"></param>
+    /// <param name="playerId"></param>
     /// <returns>
     /// true if the player is the client player.
     /// </returns>
-    private static bool IsClientPlayer(
-        Node3D playerNode
-    ) {
-        return playerNode.GetNode<Label3D>("%PlayerNameLabel").Text == ServerCommunicator.Instance.PlayerName;
-    }
+    private static bool IsClientPlayer(string playerId) => playerId == ServerCommunicator.Instance.PlayerId;
 
     private void HandlePlayerMovementUpdate(
         string playerId,
@@ -337,7 +333,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         CreatePlayer(playerId, playerName, new Vector2(posX, posY), chunkId);
 
-        if (IsClientPlayer((Node3D)FindPlayer(playerId))) {
+        if (IsClientPlayer(playerId)) {
             // Re-initialize chunk and player data if the client player joined a new chunk
             await InitializeChunkAndPlayerData();
         }

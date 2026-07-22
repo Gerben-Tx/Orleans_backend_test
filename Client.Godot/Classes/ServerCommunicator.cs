@@ -11,6 +11,7 @@ public partial class ServerCommunicator : Node {
     private HubConnection Connection { get; set; }
     public IRealtimeUpdatesHub HubProxy { get; set; }
     public string PlayerName { get; private set; }
+    public string PlayerId { get; set; }
 
     public override void _Ready() {
         base._Ready();
