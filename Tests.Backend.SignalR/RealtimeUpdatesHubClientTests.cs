@@ -197,7 +197,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
     }
 
     [Fact]
-    public async Task MoveToChunk_ShouldEnter_WhenPlayerFound() {
+    public async Task DebugMoveToChunk_ShouldEnter_WhenPlayerFound() {
         // Arrange
         int newChunkId = 2;
 
@@ -209,7 +209,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
 
         // Player grain mock
         var playerGrainMock = new Mock<IPlayerGrain>();
-        playerGrainMock.Setup(x => x.EnterChunk(newChunkGrainMock.Object))
+        playerGrainMock.Setup(x => x.DebugMoveToChunk(newChunkGrainMock.Object))
             .Verifiable(Times.Once);
 
         // Player registry mock
