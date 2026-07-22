@@ -16,11 +16,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private const int ChunkVisibilityRadius = 2;
 
     private RandomNumberGenerator _randomNumberGenerator = new();
-    private WorldChunk _currentChunk;
+    private long _currentChunkId;
     private WorldChunkList _loadedChunks = [];
     private Node3D CurrentGroundNode {
         get {
-            Node3D ret = GetNodeOrNull<Node3D>(CreateGroundChunkName(_currentChunk.ChunkId));
+            Node3D ret = GetNodeOrNull<Node3D>(CreateGroundChunkName(_currentChunkId));
             return ret ?? throw new Exception("Current ground node not found!");
         }
     }
@@ -48,44 +48,35 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         Label playerNameLabel = GetNode<Label>("%PlayerNameLabel");
         playerNameLabel.Text = playerNameLabel.Text.Replace("{name}", ServerCommunicator.Instance.PlayerName);
 
-        await InitializeChunkAndPlayerData();
-    }
-
-    private async Task InitializeChunkAndPlayerData() {
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
-        _currentChunk =
+        _currentChunkId =
             WorldChunk.FromSignalRWorldChunkContract(
-                await ServerCommunicator.Instance.HubProxy.GetCurrentChunk(ServerCommunicator.Instance.PlayerName));
-        long currentChunkId = _currentChunk.ChunkId;
+                await ServerCommunicator.Instance.HubProxy.GetCurrentChunk(ServerCommunicator.Instance.PlayerName)).ChunkId;
+        
+        await InitializeChunkAndPlayerData(_currentChunkId);
+    }
+
+    private async Task InitializeChunkAndPlayerData(long currentChunkId) {
         GD.Print($"Current Chunk ID: {currentChunkId}");
         UpdateChunkLabel(currentChunkId);
 
-        // Get neighboring chunks
-        GD.Print("Requesting neighboring chunks...");
-        WorldChunkNeighborsMessage chunkNeighborsMessage =
-            await ServerCommunicator.Instance.HubProxy.GetNeighboringChunks(
+        // Get visible chunks
+        GD.Print("Requesting visible chunks...");
+        VisibleWorldChunksMessage chunksMessage =
+            await ServerCommunicator.Instance.HubProxy.GetVisibleChunks(
                 ServerCommunicator.Instance.PlayerName,
                 ChunkVisibilityRadius);
         GD.Print(
-            $"Neighboring Chunks: {string.Join(",", chunkNeighborsMessage.Chunks.Select(chunk => $"(id: {chunk.ChunkId}, x: {chunk.X}, y: {chunk.Y})"))}");
-        WorldChunk[] worldChunks = chunkNeighborsMessage.Chunks.ToList()
+            $"Visible Chunks: {string.Join(",", chunksMessage.Chunks.Select(chunk => $"(id: {chunk.ChunkId}, x: {chunk.X}, y: {chunk.Y})"))}");
+        WorldChunk[] visibleChunks = chunksMessage.Chunks.ToList()
             .ConvertAll(WorldChunk.FromSignalRWorldChunkContract)
             .ToArray();
-        InstantiateGroundChunks(worldChunks, _currentChunk);
+        InstantiateGroundChunks(visibleChunks);
 
         // Load all players in chunk
         GD.Print("Requesting players in all visible chunks...");
-        List<WorldChunk> allChunksList = [
-            ..worldChunks,
-            _currentChunk
-        ];
-        WorldChunk[] allChunks = allChunksList.ToArray();
-        foreach (WorldChunk chunk in allChunks) {
-            if (chunk == null) {
-                continue;
-            }
-
+        foreach (WorldChunk chunk in _loadedChunks) {
             List<PlayerListMessage> playersInChunk =
                 await ServerCommunicator.Instance.HubProxy.GetPlayersInChunk(
                     ServerCommunicator.Instance.PlayerName,
@@ -111,8 +102,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     private void InstantiateGroundChunks(
-        WorldChunk[] neighbors,
-        WorldChunk currentChunk
+        WorldChunk[] visibleChunks
     ) {
         if (_loadedChunks.Count > 0) {
             // Remove old ground chunks that are no longer visible
@@ -120,8 +110,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             IEnumerable<WorldChunk> chunksToUnload =
                 [
                     .._loadedChunks.Where(x =>
-                            !neighbors.Select(y => y.ChunkId).Contains(x.ChunkId) // Filter out chunks that are not neighbors anymore
-                            && x.ChunkId != currentChunk.ChunkId // Filter out the current chunk
+                            !visibleChunks.Select(y => y.ChunkId).Contains(x.ChunkId) // Filter out chunks that are not visible anymore
+                            && x.ChunkId != _currentChunkId // Filter out the current chunk
                     )
                 ];
             
@@ -129,7 +119,6 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 GD.Print($"Removing ground chunk {chunk.ChunkId}...");
                 GetNodeOrNull(CreateGroundChunkName(chunk.ChunkId))?.QueueFree();
                 _loadedChunks.Remove(chunk);
-                // TODO: sometimes the center chunk is empty... There is no ground object
 
                 // Remove players that were part of this chunk
                 foreach (string playerId in chunk.PlayerIds.ToArray()) {
@@ -140,27 +129,26 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         }
 
         // Update loaded chunks list
-        neighbors.ToList().ForEach(neighbor => _loadedChunks.Add(neighbor));
-        _loadedChunks.Add(currentChunk);
+        visibleChunks.ToList().ForEach(visibleChunk => _loadedChunks.Add(visibleChunk));
 
-        foreach (WorldChunk worldChunkNeighbor in _loadedChunks) {
-            if (HasNode(CreateGroundChunkName(worldChunkNeighbor.ChunkId))) {
+        foreach (WorldChunk worldChunk in _loadedChunks) {
+            if (HasNode(CreateGroundChunkName(worldChunk.ChunkId))) {
                 // Ground chunk already exists, skip
                 continue;
             }
 
             GD.Print(
-                $"Instantiating ground chunk {worldChunkNeighbor.ChunkId} ({worldChunkNeighbor.X},{worldChunkNeighbor.Y})...");
+                $"Instantiating ground chunk {worldChunk.ChunkId} ({worldChunk.X},{worldChunk.Y})...");
 
             MeshInstance3D ground = GD.Load<PackedScene>("res://ground.tscn").Instantiate<MeshInstance3D>();
-            ground.Name = CreateGroundChunkName(worldChunkNeighbor.ChunkId);
+            ground.Name = CreateGroundChunkName(worldChunk.ChunkId);
             ground.Position = new Vector3(
-                worldChunkNeighbor.X * ground.GetAabb().Size.X,
+                worldChunk.X * ground.GetAabb().Size.X,
                 ground.GetAabb().Size.Y,
-                worldChunkNeighbor.Y * ground.GetAabb().Size.Z
+                worldChunk.Y * ground.GetAabb().Size.Z
             );
-            ApplyColorToGroundBasedOnChunkId(ground, worldChunkNeighbor.ChunkId);
-            CreateChunkLabel(ground, worldChunkNeighbor.ChunkId);
+            ApplyColorToGroundBasedOnChunkId(ground, worldChunk.ChunkId);
+            CreateChunkLabel(ground, worldChunk.ChunkId);
             AddChild(ground);
         }
     }
@@ -336,7 +324,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         if (IsClientPlayer(playerId)) {
             // Re-initialize chunk and player data if the client player joined a new chunk
-            await InitializeChunkAndPlayerData();
+            _currentChunkId = chunkId;
+            await InitializeChunkAndPlayerData(chunkId);
         }
     }
 

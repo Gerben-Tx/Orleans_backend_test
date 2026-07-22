@@ -108,13 +108,13 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (chunkId == await currentChunk.GetKey()) {
             playersInChunk = await currentChunk.GetAllPlayers();
         } else {
-            WorldChunkNeighbor[] neighbors = await currentChunk.GetNeighboringChunks(await playerGrain.GetChunkVisibilityRadius());
-            WorldChunkNeighbor? matchingNeighbor =
-                neighbors.ToArray().FirstOrDefault(neighbor => neighbor?.Id == chunkId);
+            VisibleWorldChunk[] visibleChunks = await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
+            VisibleWorldChunk? matchingVisibleChunk =
+                visibleChunks.ToArray().FirstOrDefault(visibleChunk => visibleChunk?.Id == chunkId);
 
-            if (matchingNeighbor != null) {
-                IWorldChunkGrain neighborChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(matchingNeighbor.Id);
-                playersInChunk = await neighborChunkGrain.GetAllPlayers();
+            if (matchingVisibleChunk != null) {
+                IWorldChunkGrain visibleChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(matchingVisibleChunk.Id);
+                playersInChunk = await visibleChunkGrain.GetAllPlayers();
             }
         }
 
@@ -134,27 +134,27 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         return messages;
     }
 
-    public async Task<WorldChunkNeighborsMessage> GetNeighboringChunks(
+    public async Task<VisibleWorldChunksMessage> GetVisibleChunks(
         string playerName,
         int radius
     ) {
         Logger.LogDebug(
-            "GetNeighboringChunks received from '{ContextConnectionId}': {PlayerName}",
+            "GetVisibleChunks received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
             playerName);
 
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
         if (playerGrain == null) {
-            return new WorldChunkNeighborsMessage([]);
+            return new VisibleWorldChunksMessage([]);
         }
         playerGrain.SetChunkVisibilityRadius(radius);
 
         IWorldChunkGrain currentChunkGrain = await playerGrain.GetCurrentChunk();
-        WorldChunkNeighbor[] allNeighbors = await currentChunkGrain.GetNeighboringChunks(radius);
+        VisibleWorldChunk[] visibleWorldChunks = await currentChunkGrain.GetVisibleChunks(radius);
 
-        return new WorldChunkNeighborsMessage(
-            allNeighbors.Select(neighbor =>
-                    new WorldChunkContract(neighbor.Id, neighbor.Position.X, neighbor.Position.Y)
+        return new VisibleWorldChunksMessage(
+            visibleWorldChunks.Select(visibleWorldChunk =>
+                    new WorldChunkContract(visibleWorldChunk.Id, visibleWorldChunk.Position.X, visibleWorldChunk.Position.Y)
                 )
                 .ToArray()
         );

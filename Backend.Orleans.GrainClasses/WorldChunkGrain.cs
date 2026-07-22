@@ -2,7 +2,6 @@ using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
 using Microsoft.Extensions.Logging;
-using WorldChunkNeighbor = Backend.Orleans.SharedContracts.WorldChunkNeighbor;
 
 namespace Backend.Orleans.GrainClasses;
 
@@ -112,7 +111,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         );
     }
 
-    public async Task<WorldChunkNeighbor[]> GetNeighboringChunksById(
+    public async Task<VisibleWorldChunk[]> GetVisibleChunksById(
         long? chunkId = null
     ) {
         if (chunkId == null) {
@@ -125,20 +124,21 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             return [];
         }
 
-        async Task<WorldChunkNeighbor?> GetNeighbor(
+        async Task<VisibleWorldChunk?> GetVisibleChunk(
             int dx,
             int dy
         ) {
             WorldChunkGrainPosition nPos = new(pos.X + dx, pos.Y + dy);
             long? nId = await GetChunkIdByPosition(nPos);
-            return nId.HasValue ? new WorldChunkNeighbor(nId.Value, nPos) : null;
+            return nId.HasValue ? new VisibleWorldChunk(nId.Value, nPos) : null;
         }
 
-        List<WorldChunkNeighbor> ret = [];
+        List<VisibleWorldChunk> ret = [];
         (int X, int Y)[] offsets = [
             (0, -1),
             (1, -1),
             (1, 0),
+            (0, 0),
             (1, 1),
             (0, 1),
             (-1, 1),
@@ -146,56 +146,56 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
             (-1, -1),
         ];
         foreach ((int X, int Y) offset in offsets) {
-            WorldChunkNeighbor? chunkNeighbor = await GetNeighbor(offset.X, offset.Y);
-            if (chunkNeighbor == null) {
+            VisibleWorldChunk? visibleChunk = await GetVisibleChunk(offset.X, offset.Y);
+            if (visibleChunk == null) {
                 continue;
             }
 
-            ret.Add(chunkNeighbor);
+            ret.Add(visibleChunk);
         }
 
         return ret.ToArray();
     }
 
-    public async Task<WorldChunkNeighbor[]> GetNeighboringChunks(
+    public async Task<VisibleWorldChunk[]> GetVisibleChunks(
         int radius = 1
     ) {
-        // Use Breadth-First Search (BFS) to find all neighboring chunks within the specified radius.
+        // Use Breadth-First Search (BFS) to find all chunks within the specified radius.
         // This ensures we discover all reachable chunks layer by layer (radius 1, then radius 2, etc.).
 
         // Track visited chunk IDs to avoid redundant processing and prevent infinite loops 
-        // caused by back-references between neighboring chunks. 
+        // caused by back-references between visible chunks. 
         // We initialize it with the current chunk ID so it's excluded from the results.
         long currentChunkId = await GetKey();
-        HashSet<long> visited = [currentChunkId];
-        List<WorldChunkNeighbor> allNeighbors = [];
+        HashSet<long> visited = [];
+        List<VisibleWorldChunk> allVisibleChunks = [];
         List<long> currentLayer = [currentChunkId];
 
         for (int i = 0; i < radius; i++) {
-            // Fetch neighbors for all chunks in the current layer in parallel.
+            // Fetch visible chunks for all chunks in the current layer in parallel.
             // This significantly reduces total latency compared to sequential requests,
             // especially when the radius is large or network latency is involved.
-            WorldChunkNeighbor[][] results =
-                await Task.WhenAll(currentLayer.Select(id => GetNeighboringChunksById(id)));
+            VisibleWorldChunk[][] results =
+                await Task.WhenAll(currentLayer.Select(id => GetVisibleChunksById(id)));
 
             List<long> nextLayer = [];
-            foreach (WorldChunkNeighbor[] neighbors in results) {
-                foreach (WorldChunkNeighbor neighbor in neighbors) {
+            foreach (VisibleWorldChunk[] visibleChunks in results) {
+                foreach (VisibleWorldChunk visibleChunk in visibleChunks) {
                     // Only process and return chunks we haven't seen yet in previous layers.
-                    if (!visited.Add(neighbor.Id)) continue;
+                    if (!visited.Add(visibleChunk.Id)) continue;
 
-                    allNeighbors.Add(neighbor);
-                    nextLayer.Add(neighbor.Id);
+                    allVisibleChunks.Add(visibleChunk);
+                    nextLayer.Add(visibleChunk.Id);
                 }
             }
 
             currentLayer = nextLayer;
             if (currentLayer.Count == 0) {
-                // No more neighbors found, can stop early.
+                // No more visible chunks found, can stop early.
                 break;
             }
         }
 
-        return allNeighbors.ToArray();
+        return allVisibleChunks.ToArray();
     }
 }

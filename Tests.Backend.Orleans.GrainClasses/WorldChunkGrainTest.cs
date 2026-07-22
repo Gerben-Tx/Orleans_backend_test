@@ -6,7 +6,6 @@ using Backend.SignalR.SharedContracts;
 using JetBrains.Annotations;
 using Moq;
 using Orleans.TestKit;
-using WorldChunkNeighbor = Backend.Orleans.SharedContracts.WorldChunkNeighbor;
 
 namespace Tests.Backend.Orleans.GrainClasses;
 
@@ -159,71 +158,75 @@ public class WorldChunkGrainTest : TestKitBase {
 
     [Fact]
     [SuppressMessage("ReSharper", "UselessBinaryOperation")]
-    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsTopLeft() {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsTopLeft() {
         // Arrange
         long chunkId = 0;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal(3, neighbors.Length);
-        Assert.Equal(chunkId + 1, neighbors[0].Id); // East
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, neighbors[1].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[2].Id); // South
+        Assert.Equal(4, visibleChunks.Length);
+        Assert.Equal(chunkId + 1, visibleChunks[0].Id); // East
+        Assert.Equal(chunkId, visibleChunks[1].Id); // Center
+        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthEast
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // South
     }
 
     [Fact]
-    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsTopRight() {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsTopRight() {
         // Arrange
         long chunkId = WorldChunkGrain.WorldSizeX - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal(3, neighbors.Length);
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[0].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, neighbors[1].Id); // SouthWest
-        Assert.Equal(chunkId - 1, neighbors[2].Id); // West
+        Assert.Equal(4, visibleChunks.Length);
+        Assert.Equal(chunkId, visibleChunks[0].Id); // Center
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // South
+        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthWest
+        Assert.Equal(chunkId - 1, visibleChunks[3].Id); // West
     }
 
     [Fact]
-    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsBottomRight() {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsBottomRight() {
         // Arrange
         long chunkId = WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal(3, neighbors.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, neighbors[0].Id); // North
-        Assert.Equal(chunkId - 1, neighbors[1].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, neighbors[2].Id); // NorthWest
+        Assert.Equal(4, visibleChunks.Length);
+        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId, visibleChunks[1].Id); // Center
+        Assert.Equal(chunkId - 1, visibleChunks[2].Id); // West
+        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // NorthWest
     }
 
     [Fact]
-    public async Task GetNeighboringChunks_ShouldReturnWorldChunkNeighborsWhenChunkIsCenter() {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsCenter() {
         // Arrange
         long chunkId = (WorldChunkGrain.WorldSizeX / 2) * (WorldChunkGrain.WorldSizeY / 2);
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        WorldChunkNeighbor[] neighbors = await grain.GetNeighboringChunksById();
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal(8, neighbors.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, neighbors[0].Id); // North
-        Assert.Equal(chunkId + 1 - WorldChunkGrain.WorldSizeX, neighbors[1].Id); // NorthEast
-        Assert.Equal(chunkId + 1, neighbors[2].Id); // East
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, neighbors[3].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, neighbors[4].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, neighbors[5].Id); // SouthWest
-        Assert.Equal(chunkId - 1, neighbors[6].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, neighbors[7].Id); // NorthWest
+        Assert.Equal(9, visibleChunks.Length);
+        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId + 1 - WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // NorthEast
+        Assert.Equal(chunkId + 1, visibleChunks[2].Id); // East
+        Assert.Equal(chunkId, visibleChunks[3].Id); // Center
+        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[4].Id); // SouthEast
+        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[5].Id); // South
+        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[6].Id); // SouthWest
+        Assert.Equal(chunkId - 1, visibleChunks[7].Id); // West
+        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[8].Id); // NorthWest
     }
 }

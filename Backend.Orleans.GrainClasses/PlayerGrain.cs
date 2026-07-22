@@ -60,24 +60,20 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
             // Exit from the current chunk
             await LeaveChunk(currentChunk);
-
-            // Join realtime updates group for this chunk
-            string chunkGroupName = await targetChunk.GetRealtimeUpdatesGroupName();
-            await JoinRealtimeUpdatesGroup(chunkGroupName);
+            
+            // Join realtime updates group for visible chunks
+            List<Task> parallelizeTasks = [];
+            VisibleWorldChunk[] visibleChunks = await targetChunk.GetVisibleChunks(_chunkVisibileRadius);
+            foreach (VisibleWorldChunk visibleChunk in visibleChunks) {
+                parallelizeTasks.Add(
+                    JoinRealtimeUpdatesGroup(
+                        await GrainFactory.GetGrain<IWorldChunkGrain>(visibleChunk.Id).GetRealtimeUpdatesGroupName()
+                    ));
+            }
             
             // Enter the new chunk
             // Must be below JoinRealtimeUpdatesGroup, otherwise the client won't receive this update
             await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
-            
-            // Join realtime updates group for neighboring chunks
-            List<Task> parallelizeTasks = [];
-            WorldChunkNeighbor[] neighbors = await targetChunk.GetNeighboringChunks(_chunkVisibileRadius);
-            foreach (WorldChunkNeighbor neighbor in neighbors) {
-                parallelizeTasks.Add(
-                    JoinRealtimeUpdatesGroup(
-                        await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
-                    ));
-            }
 
             await Task.WhenAll(parallelizeTasks);
         }
@@ -94,22 +90,19 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     ) {
         // Leave the chunk
         await chunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
-        
-        // Leave the realtime updates group for this chunk
-        string chunkGroupName = await chunk.GetRealtimeUpdatesGroupName();
-        await LeaveRealtimeUpdatesGroup(chunkGroupName);
 
-        // Leave realtime updates group for neighboring chunks
+        // TODO: maybe its better if we leave only the chunks that become not-visible..
+        // Leave realtime updates group for visible chunks
         List<Task> parallelizeTasks = [];
-        WorldChunkNeighbor?[] neighbors = await chunk.GetNeighboringChunks(_chunkVisibileRadius);
-        foreach (WorldChunkNeighbor? neighbor in neighbors) {
-            if (neighbor == null) {
+        VisibleWorldChunk?[] visibleChunks = await chunk.GetVisibleChunks(_chunkVisibileRadius);
+        foreach (VisibleWorldChunk? visibleChunk in visibleChunks) {
+            if (visibleChunk == null) {
                 continue;
             }
 
             parallelizeTasks.Add(
                 LeaveRealtimeUpdatesGroup(
-                    await GrainFactory.GetGrain<IWorldChunkGrain>(neighbor.Id).GetRealtimeUpdatesGroupName()
+                    await GrainFactory.GetGrain<IWorldChunkGrain>(visibleChunk.Id).GetRealtimeUpdatesGroupName()
                 ));
         }
 
@@ -234,8 +227,12 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         }
 
         // _logger.LogDebug("Sending path movement update...");
-
         SerializableVector2 newPosition = _path.Dequeue();
+        // // Ugly hack to make the player move faster for DEBUGGING
+        // // It skips multiple nodes in the path
+        // for (int i = 0; i < 5; i++) {
+        //     newPosition = _path.Dequeue();
+        // }
         _playerState.State.Position = newPosition;
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();

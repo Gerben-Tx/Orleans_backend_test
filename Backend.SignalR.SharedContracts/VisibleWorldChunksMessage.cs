@@ -1,5 +1,5 @@
 namespace Backend.SignalR.SharedContracts;
 
-public sealed record WorldChunkNeighborsMessage(
+public sealed record VisibleWorldChunksMessage(
     WorldChunkContract[] Chunks
 );
