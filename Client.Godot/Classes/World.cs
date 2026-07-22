@@ -17,7 +17,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     private RandomNumberGenerator _randomNumberGenerator = new();
     private WorldChunk _currentChunk;
-    private HashSet<WorldChunk> _loadedChunks = [];
+    private WorldChunkList _loadedChunks = [];
     private Node3D CurrentGroundNode {
         get {
             Node3D ret = GetNodeOrNull<Node3D>(CreateGroundChunkName(_currentChunk.ChunkId));
@@ -116,16 +116,20 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         if (_loadedChunks.Count > 0) {
             // Remove old ground chunks that are no longer visible
+            // Create a new array to avoid "System.InvalidOperationException: Collection was modified; enumeration operation may not execute."
             IEnumerable<WorldChunk> chunksToUnload =
-                _loadedChunks.Where(x =>
-                    !neighbors.Select(y => y.ChunkId).Contains(x.ChunkId) // Filter out chunks that are not neighbors anymore
-                    && x.ChunkId != currentChunk.ChunkId // Filter out the current chunk
-                );
+                [
+                    .._loadedChunks.Where(x =>
+                            !neighbors.Select(y => y.ChunkId).Contains(x.ChunkId) // Filter out chunks that are not neighbors anymore
+                            && x.ChunkId != currentChunk.ChunkId // Filter out the current chunk
+                    )
+                ];
+            
             foreach (WorldChunk chunk in chunksToUnload) {
                 GD.Print($"Removing ground chunk {chunk.ChunkId}...");
                 GetNodeOrNull(CreateGroundChunkName(chunk.ChunkId))?.QueueFree();
                 _loadedChunks.Remove(chunk);
-                // TODO: sometimes the center chunk is empty... (gray)
+                // TODO: sometimes the center chunk is empty... There is no ground object
 
                 // Remove players that were part of this chunk
                 foreach (string playerId in chunk.PlayerIds.ToArray()) {
@@ -133,13 +137,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                     DeletePlayer(playerId);
                 }
             }
-
-            neighbors.ToList().ForEach(neighbor => _loadedChunks.Add(neighbor));
-        } else {
-            // First time loading ground chunks
-            _loadedChunks = neighbors.ToList().ToHashSet();
         }
 
+        // Update loaded chunks list
+        neighbors.ToList().ForEach(neighbor => _loadedChunks.Add(neighbor));
         _loadedChunks.Add(currentChunk);
 
         foreach (WorldChunk worldChunkNeighbor in _loadedChunks) {
