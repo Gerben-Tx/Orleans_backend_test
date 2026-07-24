@@ -49,7 +49,7 @@ jobs:
         with:
           reports: '**/coverage.cobertura.xml' # REQUIRED # The coverage reports that should be parsed (separated by semicolon). Globbing is supported.
           targetdir: 'CoverageReports' # REQUIRED # The directory where the generated report should be saved.
-          reporttypes: 'Html' # The output formats and scope (separated by semicolon) Values: Badges, Clover, Cobertura, OpenCover, CsvSummary, Html, Html_Dark, Html_Light, Html_BlueRed, HtmlChart, HtmlInline, HtmlInline_AzurePipelines, HtmlInline_AzurePipelines_Dark, HtmlInline_AzurePipelines_Light, HtmlSummary, Html_BlueRed_Summary, JsonSummary, Latex, LatexSummary, lcov, MarkdownSummary, MarkdownSummaryGithub, MarkdownDeltaSummary, MHtml, SvgChart, SonarQube, TeamCitySummary, TextSummary, TextDeltaSummary, Xml, XmlSummary
+          reporttypes: 'Html;MarkdownSummaryGithub' # The output formats and scope (separated by semicolon) Values: Badges, Clover, Cobertura, OpenCover, CsvSummary, Html, Html_Dark, Html_Light, Html_BlueRed, HtmlChart, HtmlInline, HtmlInline_AzurePipelines, HtmlInline_AzurePipelines_Dark, HtmlInline_AzurePipelines_Light, HtmlSummary, Html_BlueRed_Summary, JsonSummary, Latex, LatexSummary, lcov, MarkdownSummary, MarkdownSummaryGithub, MarkdownDeltaSummary, MHtml, SvgChart, SonarQube, TeamCitySummary, TextSummary, TextDeltaSummary, Xml, XmlSummary
           sourcedirs: '' # Optional directories which contain the corresponding source code (separated by semicolon). The source directories are used if coverage report contains classes without path information.
           historydir: 'CoverageHistory' # Optional directory for storing persistent coverage information. Can be used in future reports to show coverage evolution.
           workingdir: '' # Optional working directory. If available, the targetdir, sourcedirs and historydir are interpreted relative to the working directory (only if not specified as absolute paths).'
@@ -75,3 +75,14 @@ jobs:
         with:
           name: CoverageHistory
           path: CoverageHistory
+          
+      - name: Add comment to PR # Only applicable if 'MarkdownSummaryGithub' or one of the other Markdown report types is generated
+        if: github.event_name == 'pull_request'
+        run: gh pr comment $PR_NUMBER --edit-last --create-if-none --body-file CoverageReports/SummaryGithub.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.number }}
+
+      - name: Publish coverage in build summary # Only applicable if 'MarkdownSummaryGithub' or one of the other Markdown report types is generated
+        run: cat CoverageReports/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
+        shell: bash
