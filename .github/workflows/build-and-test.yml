@@ -8,6 +8,10 @@ on:
       - '**.cs'
       - '**.csproj'
 
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   DOTNET_VERSION: '9.0.305' # The .NET SDK version to use
 

@@ -1,8 +1,6 @@
 name: "Coverage pipeline"
 description: "Generate, upload, and comment on coverage"
-permissions:
-  contents: read
-  pull-requests: write
+
 runs:
   using: "composite"
   steps:     
