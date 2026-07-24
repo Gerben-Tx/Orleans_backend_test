@@ -4,6 +4,8 @@ description: "Generate, upload, and comment on coverage"
 runs:
   using: "composite"
   steps:
+    - uses: actions/checkout@v4
+      
     - name: Test
       run: dotnet test --no-restore --verbosity normal --collect:"XPlat Code Coverage"
 
@@ -47,7 +49,6 @@ runs:
         path: CoverageHistory
 
     - name: Add comment to PR # Only applicable if 'MarkdownSummaryGithub' or one of the other Markdown report types is generated
-      if: github.event_name == 'pull_request'
       run: gh pr comment $PR_NUMBER --edit-last --create-if-none --body-file CoverageReports/SummaryGithub.md
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
