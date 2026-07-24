@@ -3,11 +3,10 @@ description: "Generate, upload, and comment on coverage"
 
 runs:
   using: "composite"
-  steps:
-    - uses: actions/checkout@v4
-      
-    - name: Test
+  steps:     
+    - name: Test with coverage
       run: dotnet test --no-restore --verbosity normal --collect:"XPlat Code Coverage"
+      shell: bash
 
     - name: Restore coverage history
       uses: dawidd6/action-download-artifact@v3
@@ -51,8 +50,9 @@ runs:
     - name: Add comment to PR # Only applicable if 'MarkdownSummaryGithub' or one of the other Markdown report types is generated
       run: gh pr comment $PR_NUMBER --edit-last --create-if-none --body-file CoverageReports/SummaryGithub.md
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.number }}
+      shell: bash
 
     - name: Publish coverage in build summary # Only applicable if 'MarkdownSummaryGithub' or one of the other Markdown report types is generated
       run: cat CoverageReports/SummaryGithub.md >> $GITHUB_STEP_SUMMARY
