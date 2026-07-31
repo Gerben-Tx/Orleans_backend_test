@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
+using Godot.Collections;
 
 #if DEBUG
 using CommandLine;
@@ -24,6 +25,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             return ret ?? throw new Exception("Current ground node not found!");
         }
     }
+    private readonly PlayerList _players = [];
 
     public async override void _Ready() {
         base._Ready();
@@ -84,7 +86,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 );
             GD.Print($"Players in chunk {chunk.ChunkId}: {playersInChunk.Count}");
             foreach (PlayerListMessage playerListMessage in playersInChunk) {
-                CreatePlayer(
+                FindOrCreatePlayer(
                     playerListMessage.Id,
                     playerListMessage.Name,
                     new Vector2(playerListMessage.PositionX, playerListMessage.PositionY),
@@ -209,14 +211,19 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GetTree().ReloadCurrentScene();
     }
 
-    private void CreatePlayer(
+    private Player FindOrCreatePlayer(
         string playerId,
         string playerName,
         Vector2 playerPosition,
         long chunkId
     ) {
-        if (FindPlayer(playerId) != null) {
-            return; // Player already exists
+        // if (FindPlayer(playerId) != null) {
+        //     return; // Player already exists
+        // }
+        
+        Player? playerObj = _players.Find(x => x.Id == playerId);
+        if (playerObj != null) {
+            return playerObj;
         }
 
         PackedScene playerScene = GD.Load<PackedScene>("res://Player.tscn");
@@ -238,11 +245,17 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             ?.PlayerIds
             .Add(playerId);
 
+        // TODO: are we sure this wont created duplicates?
+        playerObj = new Player { Id = playerId, Path = null };
+        _players.Add(playerObj);
+
         // Hacky way of making sure the correct camera is the "current".
         // This should live in a player script instead.
         if (IsClientPlayer(playerId)) {
             playerNode.GetNode<Camera3D>("Camera3D").Current = true;
         }
+
+        return playerObj;
     }
 
     private void DeletePlayer(
@@ -267,8 +280,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             .FirstOrDefault(x => x.PlayerIds.Contains(playerId), null)
             ?.PlayerIds
             .Remove(playerId);
+        
+        _players.RemoveAll(x => x.Id == playerId);
     }
 
+    // TODO: should this work with the _playerList?
+    // TODO: should we connect the player nodes to their Player isntance?
     private Node? FindPlayer(
         string playerId
     ) {
@@ -286,6 +303,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         if (playerNode == null) {
             return;
         }
+        
+        GD.Print($"Updating player {playerId} from ({playerNode.Position.X},{playerNode.Position.Y}) to ({posX},{posY})...");
 
         Aabb groundAabb = ((MeshInstance3D)CurrentGroundNode).GetAabb();
         playerNode.Position = new Vector3(
@@ -305,12 +324,14 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     /// </returns>
     private static bool IsClientPlayer(string playerId) => playerId == ServerCommunicator.Instance.PlayerId;
 
-    private void HandlePlayerMovementUpdate(
+    private void HandlePlayerNewPathCreated(
         string playerId,
-        int posX,
-        int posY
+        Array<Array<int>> path
     ) {
-        UpdatePlayer(playerId, posX, posY);
+        // Update the path for the player
+        // TODO: replace this ugly hack. The playernamer also never gets updated after this...
+        Player player = FindOrCreatePlayer(playerId, "Unknown", new Vector2(0, 0), 0);
+        player.AddPathFromArray(path);
     }
 
     private async void HandlePlayerAddedToChunk(
@@ -318,9 +339,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         string playerName,
         long chunkId,
         int posX,
-        int posY
+        int posY,
+        Array<Array<int>> path
     ) {
-        CreatePlayer(playerId, playerName, new Vector2(posX, posY), chunkId);
+        Player player = FindOrCreatePlayer(playerId, playerName, new Vector2(posX, posY), chunkId);
+        player.AddPathFromArray(path);
 
         if (IsClientPlayer(playerId)) {
             // Re-initialize chunk and player data if the client player joined a new chunk
@@ -336,13 +359,24 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         DeletePlayer(playerId);
     }
 
-    public Task PlayerMovementUpdate(
+    private void HandleTick() {
+        _players.ForEach(player => {
+            Vector2? nextPathPoint = player.GetNextPathPoint();
+            if (nextPathPoint == null) {
+                return;
+            }
+
+            UpdatePlayer(player.Id, (int)nextPathPoint.Value.X, (int)nextPathPoint.Value.Y);
+        });
+    }
+
+    public Task PlayerNewPathCreated(
         string playerId,
-        int posX,
-        int posY
+        int[][] path
     ) {
-        GD.Print($"debug PlayerMovementUpdate: {playerId}, {posX}, {posY}");
-        CallDeferred(nameof(HandlePlayerMovementUpdate), playerId, posX, posY);
+        GD.Print($"debug PlayerNewPathCreated: {playerId}, {path}");
+        Array<Array<int>> pathConverted = ConvertPathToArray(path);
+        CallDeferred(nameof(HandlePlayerNewPathCreated), playerId, pathConverted);
         return Task.CompletedTask;
     }
 
@@ -351,11 +385,24 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         string playerName,
         long chunkId,
         int posX,
-        int posY
+        int posY,
+        int[][] path
     ) {
-        GD.Print($"debug PlayerAddedToChunk {chunkId}: {playerId}, {playerName}, ({posX},{posY})");
-        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, chunkId, posX, posY);
+        GD.Print($"debug PlayerAddedToChunk {chunkId}: {playerId}, {playerName}, ({posX},{posY}), {path}");
+        Array<Array<int>> pathConverted = ConvertPathToArray(path);
+        CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, chunkId, posX, posY, pathConverted);
         return Task.CompletedTask;
+    }
+    
+    private static Array<Array<int>> ConvertPathToArray(
+        int[][] path
+    ) {
+        Array<Array<int>> pathConverted = [];
+        foreach (int[] pair in path) {
+            pathConverted.Add(new Array<int>(pair));
+        }
+
+        return pathConverted;
     }
 
     public Task PlayerRemovedFromChunk(
@@ -364,6 +411,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         GD.Print($"debug PlayerRemovedFromChunk {chunkId}: {playerId}");
         CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId, chunkId);
+        return Task.CompletedTask;
+    }
+
+    public Task Tick() {
+        GD.Print("debug Tick");
+        CallDeferred(nameof(HandleTick));
         return Task.CompletedTask;
     }
 }

@@ -17,4 +17,5 @@ public class SerializableVector2 {
     }
 
     public Vector2 ToVector2() => new(X, Y);
+    public int[] ToArray() => [X, Y];
 }

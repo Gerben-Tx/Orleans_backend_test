@@ -27,7 +27,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     public async Task AddPlayer(
         string playerGrainKey,
         string playerName,
-        SerializableVector2 playerPosition
+        SerializableVector2 playerPosition,
+        Queue<SerializableVector2> path
     ) {
         if (_players.Contains(playerGrainKey)) {
             // Player already exists in this chunk
@@ -35,14 +36,20 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         }
 
         _players.Add(playerGrainKey);
-
+        
         await _realtimeUpdates.PlayerAddedToChunk(
             _groupName,
             playerGrainKey,
             playerName,
             await GetKey(),
             playerPosition.X,
-            playerPosition.Y
+            playerPosition.Y,
+            path.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray() // TODO: move this converting to a function
+            // Added the path to this update
+            // because when a player enters a new chunk,
+            // the other players will never receive the PlayerNewPathCreated
+            // update because the path was already created.
+            // And they need the path if they want to see the player move
         );
     }
 

@@ -37,7 +37,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         CancellationToken cancellationToken
     ) {
         await base.OnActivateAsync(cancellationToken);
-        
+
         _tickManager.RegisterTickCallback(TickCallback);
     }
 
@@ -46,12 +46,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         CancellationToken cancellationToken
     ) {
         await LeaveChunk(await GetCurrentChunk());
-        
+
         await base.OnDeactivateAsync(reason, cancellationToken);
-        
+
+        // TODO: Test this!
         _tickManager.UnregisterTickCallback(TickCallback);
     }
-    
+
     private void TickCallback() {
         // Make this grain send a message to itself to call OnTickAsync
         // If we called OnTickAsync directly, it wouldn't work
@@ -75,7 +76,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
             // Exit from the current chunk
             await LeaveChunk(currentChunk);
-            
+
             // Join realtime updates group for visible chunks
             List<Task> parallelizeTasks = [];
             VisibleWorldChunk[] visibleChunks = await targetChunk.GetVisibleChunks(_chunkVisibileRadius);
@@ -85,10 +86,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
                         await GrainFactory.GetGrain<IWorldChunkGrain>(visibleChunk.Id).GetRealtimeUpdatesGroupName()
                     ));
             }
-            
+
             // Enter the new chunk
             // Must be below JoinRealtimeUpdatesGroup, otherwise the client won't receive this update
-            await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position);
+            await targetChunk.AddPlayer(this.GetPrimaryKeyString(), await GetName(), _playerState.State.Position, _path);
 
             await Task.WhenAll(parallelizeTasks);
         }
@@ -105,7 +106,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     ) {
         // Leave the chunk
         await chunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
-        
+
         // Leave realtime updates group for visible chunks
         List<Task> parallelizeTasks = [];
         VisibleWorldChunk?[] visibleChunks = await chunk.GetVisibleChunks(_chunkVisibileRadius);
@@ -146,12 +147,20 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         _realtimeUpdatesConnectionId = connectionId;
 
+        // Join players own realtime updates group (for things like ticks)
+        await JoinRealtimeUpdatesGroup(await GetKey());
+
         // Move player to his last known chunk
         await EnterChunk(await GetCurrentChunk());
     }
 
     public async Task OnTickAsync() {
-        await SendPathMovementUpdate();
+        await SendTick();
+        await MovementUpdate();
+    }
+
+    private async Task SendTick() {
+        await _realtimeUpdates.Tick(await GetKey());
     }
 
     public Task<SerializableVector2> GetPosition() {
@@ -197,7 +206,9 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await _realtimeUpdates.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
     }
 
-    private async Task SendPathMovementUpdate() {
+    private async Task MovementUpdate() {
+        IWorldChunkGrain currentChunk = await GetCurrentChunk();
+        
         if (_path.Count == 0) {
             _logger.LogDebug("No path found, creating new path...");
             Random rand = new();
@@ -216,6 +227,12 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             foreach (IEdge? edge in path.Edges) {
                 _path.Enqueue(new SerializableVector2((int)edge.End.Position.X, (int)edge.End.Position.Y));
             }
+
+            await _realtimeUpdates.PlayerNewPathCreated(
+                await currentChunk.GetRealtimeUpdatesGroupName(),
+                this.GetPrimaryKeyString(),
+                _path.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray()
+            );
         }
 
         // If we somehow have no path, just return
@@ -226,14 +243,9 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         // _logger.LogDebug("Sending path movement update...");
         SerializableVector2 newPosition = _path.Dequeue();
-        // // Ugly hack to make the player move faster for DEBUGGING
-        // // It skips multiple nodes in the path
-        // for (int i = 0; i < 5; i++) {
-        //     newPosition = _path.Dequeue();
-        // }
-        _playerState.State.Position = newPosition;
 
-        IWorldChunkGrain currentChunk = await GetCurrentChunk();
+        _playerState.State.Position = newPosition; // Save position in state
+        
         WorldChunkGrainPosition? currentChunkPosition = await currentChunk.GetPosition();
         if (currentChunkPosition == null) {
             _logger.LogWarning("Could not find position for chunk {ChunkId}!", currentChunk.GetKey());
@@ -244,28 +256,27 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             newPosition.X / WorldChunkGrain.SizeX,
             newPosition.Y / WorldChunkGrain.SizeY
         );
-        
+
         // Enter new chunk if we cross borders
         if (newChunkPosition != currentChunkPosition) {
-            _logger.LogDebug("Current chunk position: {CurrentChunkPosition} | New chunk position: {NewChunkPosition}", currentChunkPosition, newChunkPosition);
-            
+            _logger.LogDebug(
+                "Current chunk position: {CurrentChunkPosition} | New chunk position: {NewChunkPosition}",
+                currentChunkPosition,
+                newChunkPosition);
+
             long? newChunkId = await currentChunk.GetChunkIdByPosition(newChunkPosition);
             if (newChunkId == null) {
                 _logger.LogWarning("Could not find chunk id for position {Position}!", newChunkPosition);
                 return;
             }
+
             await EnterChunk(GrainFactory.GetGrain<IWorldChunkGrain>(newChunkId.Value));
         }
-        
-        await _realtimeUpdates.PlayerMovementUpdate(
-            await currentChunk.GetRealtimeUpdatesGroupName(),
-            this.GetPrimaryKeyString(),
-            newPosition.X,
-            newPosition.Y
-        );
     }
 
-    public async Task DebugMoveToChunk(IWorldChunkGrain chunkGrain) {
+    public async Task DebugMoveToChunk(
+        IWorldChunkGrain chunkGrain
+    ) {
         // Make sure we are not following a path anymore
         _path.Clear();
 
@@ -273,17 +284,18 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Do this before moving the player, so that we can get the chunk position.
         // Otherwise, the chunk might be outside the "visible radius"
         await EnterChunk(chunkGrain);
-        
+
         // Move player to the center of the chunk
         WorldChunkGrainPosition? chunkGrainPosition = await chunkGrain.GetPosition();
         if (chunkGrainPosition == null) {
             _logger.LogWarning("Could not find position for chunk {ChunkId}!", chunkGrain.GetKey());
             return;
         }
+
         _playerState.State.Position = new SerializableVector2(
             (chunkGrainPosition.X * WorldChunkGrain.SizeX) + (WorldChunkGrain.SizeX / 2),
             (chunkGrainPosition.Y * WorldChunkGrain.SizeY) + (WorldChunkGrain.SizeY / 2)
-        ); 
+        );
         await _playerState.WriteStateAsync();
     }
 }

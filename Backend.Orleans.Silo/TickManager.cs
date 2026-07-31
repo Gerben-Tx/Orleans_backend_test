@@ -6,7 +6,7 @@ using Timer = System.Timers.Timer;
 namespace Backend.Orleans.Silo;
 
 public class TickManager : ITickManager {
-    private const int IntervalInMs = 2000;
+    private const int IntervalInMs = 200;
     private readonly List<Action> _registeredCallbacks = [];
     private readonly Timer _timer;
     private readonly ILogger<TickManager> _logger;
@@ -41,7 +41,7 @@ public class TickManager : ITickManager {
         object? sender,
         ElapsedEventArgs elapsedEventArgs
     ) {
-        _logger.LogDebug("Ticking...");
+        // _logger.LogDebug("Ticking...");
         foreach (Action callback in _registeredCallbacks) {
             try {
                 callback();
@@ -50,13 +50,6 @@ public class TickManager : ITickManager {
                 throw;
             }
         }
-        _logger.LogDebug("Ticked.");
-    }
-
-    public void Dispose() {
-        _timer.Dispose();
-        _registeredCallbacks.Clear();
-        
-        _logger.LogDebug("Disposed.");
+        // _logger.LogDebug("Ticked.");
     }
 }

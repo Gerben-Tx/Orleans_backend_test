@@ -19,11 +19,16 @@ public class WorldChunkGrainTest : TestKitBase {
         string playerKey = Guid.NewGuid().ToString();
         string playerName = "Player One";
         SerializableVector2 position = new SerializableVector2(1, 2);
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>([
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
+        int[][] path = pathQueue.ToList().ConvertAll(x => new[] { x.X, x.Y }).ToArray();
 
         // Mock realtime updates service
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock
-            .Setup(x => x.PlayerAddedToChunk(groupName, playerKey, playerName, chunkId, position.X, position.Y))
+            .Setup(x => x.PlayerAddedToChunk(groupName, playerKey, playerName, chunkId, position.X, position.Y, path))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
 
@@ -31,9 +36,9 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        await grain.AddPlayer(playerKey, playerName, position);
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
         // Duplicate add should be ignored
-        await grain.AddPlayer(playerKey, playerName, position);
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
 
         // Assert
         realtimeUpdatesMock.Verify();
@@ -47,6 +52,10 @@ public class WorldChunkGrainTest : TestKitBase {
         string playerKey = Guid.NewGuid().ToString();
         string playerName = "Player Two";
         SerializableVector2 position = new SerializableVector2(3, 4);
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>([
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
 
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock
@@ -61,7 +70,7 @@ public class WorldChunkGrainTest : TestKitBase {
         realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(It.IsAny<string>(), It.IsAny<string>(), chunkId), Times.Never);
 
         // Add then remove -> should notify once
-        await grain.AddPlayer(playerKey, playerName, position);
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
         await grain.RemovePlayer(playerKey, playerName);
         realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
 
@@ -88,6 +97,10 @@ public class WorldChunkGrainTest : TestKitBase {
         // Arrange
         long chunkId = 9L;
         var realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>([
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
         // No need to verify add notifications here
         realtimeUpdatesMock
             .Setup(x => x.PlayerAddedToChunk(
@@ -96,7 +109,8 @@ public class WorldChunkGrainTest : TestKitBase {
                 It.IsAny<string>(),
                 chunkId,
                 It.IsAny<int>(),
-                It.IsAny<int>()))
+                It.IsAny<int>(),
+                It.IsAny<int[][]>()))
             .Returns(Task.CompletedTask);
 
         Guid p1 = Guid.NewGuid();
@@ -111,8 +125,8 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Add two players
-        await grain.AddPlayer(k1, "Alice", new SerializableVector2(10, 20));
-        await grain.AddPlayer(k2, "Bob", new SerializableVector2(30, 40));
+        await grain.AddPlayer(k1, "Alice", new SerializableVector2(10, 20), pathQueue);
+        await grain.AddPlayer(k2, "Bob", new SerializableVector2(30, 40), pathQueue);
 
         // Act
         List<IPlayerGrain> players = await grain.GetAllPlayers();

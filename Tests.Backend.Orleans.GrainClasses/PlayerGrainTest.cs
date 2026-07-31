@@ -80,7 +80,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName));
-        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
+        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()))
             .Returns(Task.CompletedTask);
         chunkMock.Setup(x => x.GetVisibleChunks(It.IsAny<int>()))
             .Returns(Task.FromResult<VisibleWorldChunk[]>([]));
@@ -118,7 +118,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName));
-        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), existingPlayerName, It.IsAny<SerializableVector2>()))
+        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), existingPlayerName, It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()))
             .Returns(Task.CompletedTask);
         chunkMock.Setup(x => x.GetVisibleChunks(It.IsAny<int>()))
             .Returns(Task.FromResult<VisibleWorldChunk[]>([]));
@@ -166,7 +166,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> targetChunkMock = Silo.AddProbe<IWorldChunkGrain>(targetChunkId);
         targetChunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(targetChunkGroupName));
-        targetChunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
+        targetChunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
         targetChunkMock.Setup(x => x.GetVisibleChunks(It.IsAny<int>()))
@@ -212,7 +212,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(chunkGroupName));
-        chunkMock.Verify(x => x.AddPlayer(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SerializableVector2>()), Times.Never);
+        chunkMock.Verify(x => x.AddPlayer(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()), Times.Never);
         chunkMock.Setup(x => x.IsPlayerInChunk(It.IsAny<string>()))
             .Returns(Task.FromResult(true))
             .Verifiable(Times.Once);
@@ -386,7 +386,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(groupName));
-        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
+        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()))
             .Returns(Task.CompletedTask);
         chunkMock.Setup(x => x.GetVisibleChunks(It.IsAny<int>()))
             .Returns(Task.FromResult<VisibleWorldChunk[]>([]));
@@ -450,7 +450,7 @@ public class PlayerGrainTest : TestKitBase {
         Mock<IWorldChunkGrain> chunkMock = Silo.AddProbe<IWorldChunkGrain>(chunkId);
         chunkMock.Setup(x => x.GetRealtimeUpdatesGroupName())
             .Returns(Task.FromResult(groupName));
-        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>()))
+        chunkMock.Setup(x => x.AddPlayer(It.IsAny<string>(), playerName, It.IsAny<SerializableVector2>(), It.IsAny<Queue<SerializableVector2>>()))
             .Returns(Task.CompletedTask);
         chunkMock.Setup(x => x.GetVisibleChunks(It.IsAny<int>()))
             .Returns(Task.FromResult<VisibleWorldChunk[]>([new VisibleWorldChunk(chunkId,new WorldChunkGrainPosition(0,0))]));
