@@ -116,7 +116,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        var result = await _realtimeUpdatesHubClient.GetCurrentChunkId(PlayerName);
+        var result = await _realtimeUpdatesHubClient.GetCurrentChunk(PlayerName);
 
         // Assert
         Assert.Null(result);
@@ -129,10 +129,13 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         // Arrange
 
         // Chunk grain mock
-        var currentChunkPrimaryKey = 123L;
+        var currentChunkPrimaryKey = 5L;
         var currentChunkMock = new Mock<IWorldChunkGrain>();
         currentChunkMock.Setup(x => x.GetKey())
             .Returns(Task.FromResult(currentChunkPrimaryKey))
+            .Verifiable(Times.Once);
+        currentChunkMock.Setup(x => x.GetPosition())
+            .Returns(Task.FromResult<WorldChunkGrainPosition?>(new WorldChunkGrainPosition(0, 0)))
             .Verifiable(Times.Once);
 
         // Player grain mock
@@ -157,10 +160,10 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        var result = await _realtimeUpdatesHubClient.GetCurrentChunkId(PlayerName);
+        var result = await _realtimeUpdatesHubClient.GetCurrentChunk(PlayerName);
 
         // Assert
-        Assert.Equal(currentChunkPrimaryKey, result);
+        Assert.Equal(currentChunkPrimaryKey, result.ChunkId);
         currentChunkMock.Verify();
         _orleansClientMock.Verify();
         playerRegistryMock.Verify();
@@ -186,7 +189,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.MoveToChunk(PlayerName, newChunkId);
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
 
         // Assert
         _orleansClientMock.Verify();
@@ -194,7 +197,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
     }
 
     [Fact]
-    public async Task MoveToChunk_ShouldEnter_WhenPlayerFound() {
+    public async Task DebugMoveToChunk_ShouldEnter_WhenPlayerFound() {
         // Arrange
         int newChunkId = 2;
 
@@ -206,7 +209,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
 
         // Player grain mock
         var playerGrainMock = new Mock<IPlayerGrain>();
-        playerGrainMock.Setup(x => x.EnterChunk(newChunkGrainMock.Object))
+        playerGrainMock.Setup(x => x.DebugMoveToChunk(newChunkGrainMock.Object))
             .Verifiable(Times.Once);
 
         // Player registry mock
@@ -219,7 +222,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.MoveToChunk(PlayerName, newChunkId);
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
 
         // Assert
         _orleansClientMock.Verify();
@@ -242,7 +245,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        var result = await _realtimeUpdatesHubClient.GetPlayersInCurrentChunk(PlayerName);
+        var result = await _realtimeUpdatesHubClient.GetPlayersInChunk(PlayerName, 1L);
 
         // Assert
         Assert.Empty(result);
@@ -251,6 +254,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
     [Fact]
     public async Task GetPlayersInCurrentChunk_ShouldReturnPlayersInChunk_WhenPlayerFound() {
         // Arrange
+        var chunkId = 1L;
         var player1 = new Mock<IPlayerGrain>();
         var player2 = new Mock<IPlayerGrain>();
         var player1Position = new SerializableVector2(100, 200);
@@ -284,6 +288,9 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
         currentChunkGrainMock.Setup(x => x.GetAllPlayers())
             .Returns(Task.FromResult(playersInChunk))
+            .Verifiable(Times.Once);
+        currentChunkGrainMock.Setup(x => x.GetKey())
+            .Returns(Task.FromResult(chunkId))
             .Verifiable(Times.Once);
 
         // Player grain mock
@@ -322,7 +329,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        var result = await _realtimeUpdatesHubClient.GetPlayersInCurrentChunk(PlayerName);
+        var result = await _realtimeUpdatesHubClient.GetPlayersInChunk(PlayerName, chunkId);
 
         // Assert
         Assert.Collection(

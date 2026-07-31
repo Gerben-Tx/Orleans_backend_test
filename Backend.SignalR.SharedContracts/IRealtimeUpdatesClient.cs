@@ -5,6 +5,6 @@ namespace Backend.SignalR.SharedContracts;
 /// </summary>
 public interface IRealtimeUpdatesClient {
     Task PlayerMovementUpdate(string playerId, int posX, int posY);
-    Task PlayerAddedToChunk(string playerId, string playerName, int posX, int posY);
-    Task PlayerRemovedFromChunk(string playerId);
+    Task PlayerAddedToChunk(string playerId, string playerName, long chunkId, int posX, int posY);
+    Task PlayerRemovedFromChunk(string playerId, long chunkId);
 }

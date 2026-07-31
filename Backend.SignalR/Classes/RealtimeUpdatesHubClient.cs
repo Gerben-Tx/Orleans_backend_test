@@ -1,6 +1,7 @@
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
+using Orleans.Concurrency;
 
 namespace Backend.SignalR.Classes;
 
@@ -10,7 +11,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>> logger
     ) : base(orleansClient, logger) { }
 
-    public async Task RegisterPlayerGrain(
+    public async Task<string> RegisterPlayerGrain(
         string playerName
     ) {
         Logger.LogDebug(
@@ -39,9 +40,11 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         await playerGrain.Initialize(Context.ConnectionId, playerName);
 
         Logger.LogDebug("Done registering player grain");
+
+        return await playerGrain.GetKey();
     }
 
-    public async Task<long?> GetCurrentChunkId(
+    public async Task<WorldChunkContract> GetCurrentChunk(
         string playerName
     ) {
         Logger.LogDebug(
@@ -55,16 +58,24 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
+        WorldChunkGrainPosition? position = await currentChunk.GetPosition();
+        if (position == null) {
+            return null;
+        }
 
-        return await currentChunk.GetKey();
+        return new WorldChunkContract(
+            await currentChunk.GetKey(),
+            position.X,
+            position.Y
+        );
     }
 
-    public async Task MoveToChunk(
+    public async Task DebugMoveToChunk(
         string playerName,
         int newChunkId
     ) {
         Logger.LogDebug(
-            "MoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
+            "DebugMoveToChunk received from '{ContextConnectionId}': {PlayerName}, {NewChunkId}",
             Context.ConnectionId,
             playerName,
             newChunkId);
@@ -75,14 +86,15 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain newChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(newChunkId);
-        await playerGrain.EnterChunk(newChunkGrain);
+        await playerGrain.DebugMoveToChunk(newChunkGrain);
     }
 
-    public async Task<List<PlayerListMessage>> GetPlayersInCurrentChunk(
-        string playerName
+    public async Task<List<PlayerListMessage>> GetPlayersInChunk(
+        string playerName,
+        long chunkId
     ) {
         Logger.LogDebug(
-            "GetPlayersInCurrentChunk received from '{ContextConnectionId}': {PlayerName}",
+            "GetPlayersInChunk received from '{ContextConnectionId}': {PlayerName}",
             Context.ConnectionId,
             playerName);
 
@@ -92,7 +104,20 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         IWorldChunkGrain currentChunk = await playerGrain.GetCurrentChunk();
-        List<IPlayerGrain> playersInChunk = await currentChunk.GetAllPlayers();
+        List<IPlayerGrain> playersInChunk = [];
+        if (chunkId == await currentChunk.GetKey()) {
+            playersInChunk = await currentChunk.GetAllPlayers();
+        } else {
+            VisibleWorldChunk[] visibleChunks = await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
+            VisibleWorldChunk? matchingVisibleChunk =
+                visibleChunks.ToArray().FirstOrDefault(visibleChunk => visibleChunk?.Id == chunkId);
+
+            if (matchingVisibleChunk != null) {
+                IWorldChunkGrain visibleChunkGrain = OrleansClient.GetGrain<IWorldChunkGrain>(matchingVisibleChunk.Id);
+                playersInChunk = await visibleChunkGrain.GetAllPlayers();
+            }
+        }
+
 
         List<PlayerListMessage> messages = [];
         foreach (IPlayerGrain player in playersInChunk) {
@@ -107,6 +132,32 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         }
 
         return messages;
+    }
+
+    public async Task<VisibleWorldChunksMessage> GetVisibleChunks(
+        string playerName,
+        int radius
+    ) {
+        Logger.LogDebug(
+            "GetVisibleChunks received from '{ContextConnectionId}': {PlayerName}",
+            Context.ConnectionId,
+            playerName);
+
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return new VisibleWorldChunksMessage([]);
+        }
+        playerGrain.SetChunkVisibilityRadius(radius);
+
+        IWorldChunkGrain currentChunkGrain = await playerGrain.GetCurrentChunk();
+        VisibleWorldChunk[] visibleWorldChunks = await currentChunkGrain.GetVisibleChunks(radius);
+
+        return new VisibleWorldChunksMessage(
+            visibleWorldChunks.Select(visibleWorldChunk =>
+                    new WorldChunkContract(visibleWorldChunk.Id, visibleWorldChunk.Position.X, visibleWorldChunk.Position.Y)
+                )
+                .ToArray()
+        );
     }
 
     private async Task<IPlayerGrain?> FindPlayerInRegistry(

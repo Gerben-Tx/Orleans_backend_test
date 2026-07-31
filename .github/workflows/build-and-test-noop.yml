@@ -1,0 +1,28 @@
+# This is a workaround for the problem described here:
+# https://github.com/orgs/community/discussions/49124#discussioncomment-5209069
+
+name: build and test
+
+on:
+  push:
+    paths-ignore:
+      - '**.cs'
+      - '**.csproj'
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '**.cs'
+      - '**.csproj'
+
+jobs:
+  build-and-test:
+
+    name: build-and-test-${{matrix.os}}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+    
+    steps:
+      - run: echo "No relevant changes; tests skipped"
+    

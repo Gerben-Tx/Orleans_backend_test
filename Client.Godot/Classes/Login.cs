@@ -47,7 +47,7 @@ public partial class Login : Node3D {
 
     private async void DoLogin(string playerName) {
         IRealtimeUpdatesHub realtimeUpdates = await ServerCommunicator.Instance.ConnectToRealtimeUpdates(playerName);
-        await realtimeUpdates.RegisterPlayerGrain(ServerCommunicator.Instance.PlayerName);
+        ServerCommunicator.Instance.PlayerId = await realtimeUpdates.RegisterPlayerGrain(ServerCommunicator.Instance.PlayerName);;
 
         GetTree().ChangeSceneToFile("res://world.tscn");
     }

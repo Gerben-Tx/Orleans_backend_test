@@ -36,13 +36,13 @@ This project exists to centralize the definitions of the real-time communication
 
 ## Project Type
 
-| Item | Description |
-|---|---|
-| Project type | Class Library / SignalR Contracts |
-| Target framework | `net8.0` |
-| Language | C# |
-| Main entry point | N/A (Library) |
-| Output | Class Library (.dll) |
+| Item             | Description                       |
+|------------------|-----------------------------------|
+| Project type     | Class Library / SignalR Contracts |
+| Target framework | `net8.0`                          |
+| Language         | C#                                |
+| Main entry point | N/A (Library)                     |
+| Output           | Class Library (.dll)              |
 
 ---
 
