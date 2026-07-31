@@ -35,13 +35,13 @@ This project exists to decouple the grain interfaces from their implementations.
 
 ## Project Type
 
-| Item | Description |
-|---|---|
-| Project type | Class Library / Orleans Contracts |
-| Target framework | `net8.0` |
-| Language | C# |
-| Main entry point | N/A (Library) |
-| Output | Class Library (.dll) |
+| Item             | Description                       |
+|------------------|-----------------------------------|
+| Project type     | Class Library / Orleans Contracts |
+| Target framework | `net8.0`                          |
+| Language         | C#                                |
+| Main entry point | N/A (Library)                     |
+| Output           | Class Library (.dll)              |
 
 ---
 

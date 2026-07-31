@@ -38,13 +38,13 @@ This project exists to centralize the implementation of the game's business logi
 
 ## Project Type
 
-| Item | Description |
-|---|---|
-| Project type | Class Library / Orleans Grains |
-| Target framework | `net8.0` |
-| Language | C# |
-| Main entry point | N/A (Library) |
-| Output | Class Library (.dll) |
+| Item             | Description                    |
+|------------------|--------------------------------|
+| Project type     | Class Library / Orleans Grains |
+| Target framework | `net8.0`                       |
+| Language         | C#                             |
+| Main entry point | N/A (Library)                  |
+| Output           | Class Library (.dll)           |
 
 ---
 
@@ -69,8 +69,8 @@ This project relies on Orleans Silo configuration, which is typically found in t
 
 ### Required Settings
 
-| Setting | Description | Example |
-|---|---|---|
+| Setting      | Description                            | Example                       |
+|--------------|----------------------------------------|-------------------------------|
 | `tableStore` | Storage provider for grain persistence | Defined in Silo configuration |
 
 ---

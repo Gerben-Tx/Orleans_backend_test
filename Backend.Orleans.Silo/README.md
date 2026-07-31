@@ -40,13 +40,13 @@ This project exists to separate the hosting and configuration of the Orleans clu
 
 ## Project Type
 
-| Item | Description |
-|---|---|
-| Project type | Console Application / Orleans Silo |
-| Target framework | `net8.0` |
-| Language | C# |
-| Main entry point | `Program.cs` |
-| Output | Executable (.exe) |
+| Item             | Description                        |
+|------------------|------------------------------------|
+| Project type     | Console Application / Orleans Silo |
+| Target framework | `net8.0`                           |
+| Language         | C#                                 |
+| Main entry point | `Program.cs`                       |
+| Output           | Executable (.exe)                  |
 
 ---
 
@@ -72,12 +72,12 @@ The project is configured in `Program.cs` and currently uses local development s
 
 ### Required Settings
 
-| Setting | Description | Default/Example |
-|---|---|---|
-| `TableServiceClient` | Connection to Azure Table Storage | `UseDevelopmentStorage=true` |
-| `BlobServiceClient` | Connection to Azure Blob Storage | `UseDevelopmentStorage=true` |
-| `QueueServiceClient` | Connection to Azure Queue Storage | `UseDevelopmentStorage=true` |
-| `SignalR Hub URL` | URL of the RealtimeUpdatesHub | `http://localhost:5202/realtimeUpdatesHubOrleans` |
+| Setting              | Description                       | Default/Example                                   |
+|----------------------|-----------------------------------|---------------------------------------------------|
+| `TableServiceClient` | Connection to Azure Table Storage | `UseDevelopmentStorage=true`                      |
+| `BlobServiceClient`  | Connection to Azure Blob Storage  | `UseDevelopmentStorage=true`                      |
+| `QueueServiceClient` | Connection to Azure Queue Storage | `UseDevelopmentStorage=true`                      |
+| `SignalR Hub URL`    | URL of the RealtimeUpdatesHub     | `http://localhost:5202/realtimeUpdatesHubOrleans` |
 
 ---
 

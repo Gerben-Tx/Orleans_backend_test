@@ -39,13 +39,13 @@ This project exists to provide a dedicated real-time communication layer. By sep
 
 ## Project Type
 
-| Item | Description |
-|---|---|
-| Project type | ASP.NET Core Web Application |
-| Target framework | `net8.0` |
-| Language | C# |
-| Main entry point | `Program.cs` |
-| Output | Web Application / executable |
+| Item             | Description                  |
+|------------------|------------------------------|
+| Project type     | ASP.NET Core Web Application |
+| Target framework | `net8.0`                     |
+| Language         | C#                           |
+| Main entry point | `Program.cs`                 |
+| Output           | Web Application / executable |
 
 ---
 
@@ -70,10 +70,10 @@ The project is configured in `Program.cs` and `appsettings.json`.
 
 ### Required Settings
 
-| Setting | Description | Default/Example |
-|---|---|---|
-| `Urls` | The address the server listens on | `http://localhost:5202` |
-| `Orleans Clustering` | Connection to the Orleans Silo | `UseLocalhostClustering()` |
+| Setting              | Description                             | Default/Example              |
+|----------------------|-----------------------------------------|------------------------------|
+| `Urls`               | The address the server listens on       | `http://localhost:5202`      |
+| `Orleans Clustering` | Connection to the Orleans Silo          | `UseLocalhostClustering()`   |
 | `QueueServiceClient` | Connection to Azure Queue for streaming | `UseDevelopmentStorage=true` |
 
 ---
