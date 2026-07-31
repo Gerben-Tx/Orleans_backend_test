@@ -90,8 +90,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     ) {
         // Leave the chunk
         await chunk.RemovePlayer(this.GetPrimaryKeyString(), await GetName());
-
-        // TODO: maybe its better if we leave only the chunks that become not-visible..
+        
         // Leave realtime updates group for visible chunks
         List<Task> parallelizeTasks = [];
         VisibleWorldChunk?[] visibleChunks = await chunk.GetVisibleChunks(_chunkVisibileRadius);
@@ -205,7 +204,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             Path? path = await _pathFindingService.FindPath(
                 _playerState.State.Position.ToVector2(),
                 new Vector2(
-                    // TODO: For now we use random coords, but we should eventually get the destination from the client
                     rand.Next(0, _pathFindingService.GetGrid().Columns),
                     rand.Next(0, _pathFindingService.GetGrid().Rows)
                 )
