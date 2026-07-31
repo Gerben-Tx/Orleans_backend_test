@@ -2,6 +2,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Queues;
 using Backend.Orleans.SharedContracts;
+using Backend.Orleans.Silo;
 using Backend.Orleans.Silo.Pathfinding;
 using Backend.Orleans.Silo.SignalR;
 using Backend.SignalR.SharedContracts;
@@ -64,7 +65,8 @@ using IHost host = new HostBuilder()
                 connection.StartAsync();
                 return connection.ServerProxy<IRealtimeUpdatesOrleans>();
             })
-            .AddSingleton<IPathfindingService, PathfindingService>();
+            .AddSingleton<IPathfindingService, PathfindingService>()
+            .AddActivatedSingleton<ITickManager, TickManager>();
     })
     .Build();
 await host.RunAsync();

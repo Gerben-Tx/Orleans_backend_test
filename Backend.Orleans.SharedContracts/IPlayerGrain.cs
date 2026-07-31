@@ -13,4 +13,5 @@ public interface IPlayerGrain : IGrainWithGuidKey {
     public Task<int> GetChunkVisibilityRadius();
     public void SetChunkVisibilityRadius(int radius);
     public Task DebugMoveToChunk(IWorldChunkGrain chunkGrain);
+    public Task OnTickAsync();
 }

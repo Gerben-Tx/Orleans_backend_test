@@ -16,24 +16,29 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     private readonly IPathfindingService _pathFindingService;
     private readonly Queue<SerializableVector2> _path = new();
     private int _chunkVisibileRadius = 1;
+    private readonly ITickManager _tickManager;
 
     public PlayerGrain(
         [PersistentState("player", "tableStore")]
         IPersistentState<PlayerState> playerState,
         ILogger<PlayerGrain> logger,
         IRealtimeUpdatesOrleans realtimeUpdates,
-        IPathfindingService pathfindingService
+        IPathfindingService pathfindingService,
+        ITickManager tickManager
     ) : base(logger) {
         _playerState = playerState;
         _logger = logger;
         _realtimeUpdates = realtimeUpdates;
         _pathFindingService = pathfindingService;
+        _tickManager = tickManager;
     }
 
     public override async Task OnActivateAsync(
         CancellationToken cancellationToken
     ) {
         await base.OnActivateAsync(cancellationToken);
+        
+        _tickManager.RegisterTickCallback(TickCallback);
     }
 
     public override async Task OnDeactivateAsync(
@@ -41,8 +46,18 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         CancellationToken cancellationToken
     ) {
         await LeaveChunk(await GetCurrentChunk());
-
+        
         await base.OnDeactivateAsync(reason, cancellationToken);
+        
+        _tickManager.UnregisterTickCallback(TickCallback);
+    }
+    
+    private void TickCallback() {
+        // Make this grain send a message to itself to call OnTickAsync
+        // If we called OnTickAsync directly, it wouldn't work
+        // because the TickManager cannot execute grain code
+        // because it runs outside the grain context (on a thread-pool thread)
+        this.AsReference<IPlayerGrain>().OnTickAsync();
     }
 
     public async Task EnterChunk(
@@ -133,7 +148,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         // Move player to his last known chunk
         await EnterChunk(await GetCurrentChunk());
-        await StartMovementTimer();
+    }
+
+    public async Task OnTickAsync() {
+        await SendPathMovementUpdate();
     }
 
     public Task<SerializableVector2> GetPosition() {
@@ -177,24 +195,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         }
 
         await _realtimeUpdates.RemoveFromGroupAsync(groupName, _realtimeUpdatesConnectionId);
-    }
-
-    /// <summary>
-    /// Starts a timer that sends random movement updates to the client.
-    /// This is just for testing purposes. Eventually, the client should be able to choose its own movement.
-    /// </summary>
-    /// <returns></returns>
-    public Task StartMovementTimer() {
-        this.RegisterGrainTimer(
-            // SendRandomMovementUpdate,
-            SendPathMovementUpdate,
-            new GrainTimerCreationOptions(
-                TimeSpan.FromSeconds(0),
-                TimeSpan.FromMilliseconds(250)
-            ) { Interleave = true, KeepAlive = true }
-        );
-
-        return Task.CompletedTask;
     }
 
     private async Task SendPathMovementUpdate() {
