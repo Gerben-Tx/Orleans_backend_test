@@ -1,0 +1,22 @@
+# This is a workaround for the problem described here:
+# https://github.com/orgs/community/discussions/49124#discussioncomment-5209069
+
+name: build and test
+
+on:
+  push:
+    paths:
+      - '**.cs'
+      - '**.csproj'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.cs'
+      - '**.csproj'
+
+jobs:
+  build-and-test:
+
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "No relevant changes; tests skipped"
