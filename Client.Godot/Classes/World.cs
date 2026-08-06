@@ -18,7 +18,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     private RandomNumberGenerator _randomNumberGenerator = new();
     private long _currentChunkId;
+    private WorldInfoMessage _worldInfo;
     private WorldChunkList _loadedChunks = [];
+    private PackedScene _tileScene = GD.Load<PackedScene>("res://ground.tscn");
     private Node3D CurrentGroundNode {
         get {
             Node3D ret = GetNodeOrNull<Node3D>(CreateGroundChunkName(_currentChunkId));
@@ -50,6 +52,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         Label playerNameLabel = GetNode<Label>("%PlayerNameLabel");
         playerNameLabel.Text = playerNameLabel.Text.Replace("{name}", ServerCommunicator.Instance.PlayerName);
 
+        // Get world info
+        GD.Print("Requesting world info...");
+        _worldInfo = await ServerCommunicator.Instance.HubProxy.GetWorldInfo();
+        
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
         _currentChunkId =
@@ -78,6 +84,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         // Load all players in chunk
         GD.Print("Requesting players in all visible chunks...");
+        // TODO:  System.InvalidOperationException: Collection was modified; enumeration operation may not execute.
+        //  This must be handled synchronously, AFTER we unload the chunks
         foreach (WorldChunk chunk in _loadedChunks) {
             List<PlayerListMessage> playersInChunk =
                 await ServerCommunicator.Instance.HubProxy.GetPlayersInChunk(
@@ -111,14 +119,15 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             // Create a new array to avoid "System.InvalidOperationException: Collection was modified; enumeration operation may not execute."
             IEnumerable<WorldChunk> chunksToUnload =
                 [
-                    .._loadedChunks.Where(x =>
-                            !visibleChunks.Select(y => y.ChunkId).Contains(x.ChunkId) // Filter out chunks that are not visible anymore
-                            && x.ChunkId != _currentChunkId // Filter out the current chunk
+                    .._loadedChunks.Where(loadedChunk =>
+                            !visibleChunks.Select(visibleChunk => visibleChunk.ChunkId).Contains(loadedChunk.ChunkId) // Filter out chunks that are not visible anymore
+                            && loadedChunk.ChunkId != _currentChunkId // Filter out the current chunk
                     )
                 ];
             
             foreach (WorldChunk chunk in chunksToUnload) {
                 GD.Print($"Removing ground chunk {chunk.ChunkId}...");
+                chunk.Tiles.ToList().ForEach(tile => tile.QueueFree()); // We MUST remove all references to the tiles before freeing the chunk
                 GetNodeOrNull(CreateGroundChunkName(chunk.ChunkId))?.QueueFree();
                 _loadedChunks.Remove(chunk);
 
@@ -142,16 +151,49 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             GD.Print(
                 $"Instantiating ground chunk {worldChunk.ChunkId} ({worldChunk.X},{worldChunk.Y})...");
 
-            MeshInstance3D ground = GD.Load<PackedScene>("res://ground.tscn").Instantiate<MeshInstance3D>();
-            ground.Name = CreateGroundChunkName(worldChunk.ChunkId);
-            ground.Position = new Vector3(
-                worldChunk.X * ground.GetAabb().Size.X,
-                ground.GetAabb().Size.Y,
-                worldChunk.Y * ground.GetAabb().Size.Z
-            );
-            ApplyColorToGroundBasedOnChunkId(ground, worldChunk.ChunkId);
-            CreateChunkLabel(ground, worldChunk.ChunkId);
-            AddChild(ground);
+            // TODO: if we want to use smaller tile sizes (1,1)
+            //  we should pre load all (?) the chunks beforehand
+            //  There is a lot of stuttering when moving between chunks
+            //  when using small tile sizes (<= 5)
+            
+            for (int x = 0; x < _worldInfo.ChunkSizeX / Tile.TileSize.X; x++) {
+                for (int y = 0; y < _worldInfo.ChunkSizeY / Tile.TileSize.Y; y++) {
+                    // The chunk position in world coordinates
+                    Vector2I chunkWorldPosition = new(
+                        worldChunk.X * _worldInfo.ChunkSizeX,
+                        worldChunk.Y * _worldInfo.ChunkSizeY
+                    );
+
+                    // The ground position in world coordinates
+                    Vector2I tiledWorldPosition = new(
+                        chunkWorldPosition.X + x,
+                        chunkWorldPosition.Y + y
+                    );
+
+                    Vector2 tilePositionScaled = new(
+                        chunkWorldPosition.X + (x * Tile.TileSize.X),
+                        chunkWorldPosition.Y + (y * Tile.TileSize.Y)
+                    );
+                    
+                    MeshInstance3D tileMesh = _tileScene.Instantiate<MeshInstance3D>();
+                    tileMesh.Name = CreateGroundChunkName(worldChunk.ChunkId);
+                    tileMesh.Position = new Vector3(
+                        tilePositionScaled.X,
+                        tileMesh.GetAabb().Size.Y,
+                        tilePositionScaled.Y
+                    );
+                    DebugApplyColorToGroundBasedOnChunkId(tileMesh, worldChunk.ChunkId);
+                    if (x == _worldInfo.ChunkSizeX / Tile.TileSize.X / 2 && y == _worldInfo.ChunkSizeY / Tile.TileSize.Y / 2) {
+                        DebugCreateChunkLabel(tileMesh, worldChunk.ChunkId);
+                    }
+                    AddChild(tileMesh);
+
+                    Tile groundTile = tileMesh as Node as Tile ?? throw new InvalidOperationException("Ground is not a Tile!");
+                    groundTile.WorldPosition = tiledWorldPosition;
+                    groundTile.WorldChunk = worldChunk;
+                    worldChunk.Tiles.Add(groundTile);
+                }
+            }
         }
     }
 
@@ -163,7 +205,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
      * Applies a color to the ground mesh based on the chunk id.
      * This is just for debugging purposes.
      */
-    private void ApplyColorToGroundBasedOnChunkId(
+    private void DebugApplyColorToGroundBasedOnChunkId(
         MeshInstance3D groundMesh,
         long chunkId
     ) {
@@ -177,11 +219,15 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             ((hash >> 16) & 0xFF) / 255.0f,
             ((hash >> 8) & 0xFF) / 255.0f,
             (hash & 0xFF) / 255.0f
-        );
+        ).Darkened(_randomNumberGenerator.Randf() * 30 / 100);
         groundMesh.SetSurfaceOverrideMaterial(0, material);
     }
 
-    private void CreateChunkLabel(
+    /**
+     * Creates a label that shows the chunk id.
+     * This is just for debugging purposes.
+     */
+    private void DebugCreateChunkLabel(
         MeshInstance3D groundMesh,
         long chunkId
     ) {
@@ -376,6 +422,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         GD.Print($"debug PlayerNewPathCreated: {playerId}, {path}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
+        
+        // TODO: Move to a queue instead of handling this directly
         CallDeferred(nameof(HandlePlayerNewPathCreated), playerId, pathConverted);
         return Task.CompletedTask;
     }
@@ -390,6 +438,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     ) {
         GD.Print($"debug PlayerAddedToChunk {chunkId}: {playerId}, {playerName}, ({posX},{posY}), {path}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
+        
+        // TODO: Move to a queue instead of handling this directly
         CallDeferred(nameof(HandlePlayerAddedToChunk), playerId, playerName, chunkId, posX, posY, pathConverted);
         return Task.CompletedTask;
     }
@@ -410,12 +460,16 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         long chunkId
     ) {
         GD.Print($"debug PlayerRemovedFromChunk {chunkId}: {playerId}");
+        
+        // TODO: Move to a queue instead of handling this directly
         CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId, chunkId);
         return Task.CompletedTask;
     }
 
     public Task Tick() {
-        GD.Print("debug Tick");
+        // GD.Print("debug Tick");
+        
+        // TODO: Move to a queue instead of handling this directly
         CallDeferred(nameof(HandleTick));
         return Task.CompletedTask;
     }

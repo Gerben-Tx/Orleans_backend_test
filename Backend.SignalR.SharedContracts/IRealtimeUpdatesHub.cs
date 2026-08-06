@@ -20,4 +20,5 @@ public interface IRealtimeUpdatesHub {
     Task<List<PlayerListMessage>> GetPlayersInChunk(string playerName, long chunkId);
 
     Task<VisibleWorldChunksMessage> GetVisibleChunks(string playerName, int radius);
+    Task<WorldInfoMessage> GetWorldInfo();
 }

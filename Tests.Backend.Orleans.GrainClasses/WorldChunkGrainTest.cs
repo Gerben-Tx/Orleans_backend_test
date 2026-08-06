@@ -139,22 +139,22 @@ public class WorldChunkGrainTest : TestKitBase {
 
     [Fact]
     public void SizeConstants_ShouldBe30() {
-        Assert.Equal(30, WorldChunkGrain.SizeX);
-        Assert.Equal(30, WorldChunkGrain.SizeY);
+        Assert.Equal(30, IWorldChunkGrain.SizeX);
+        Assert.Equal(30, IWorldChunkGrain.SizeY);
     }
 
     [Theory]
     [InlineData(0, 0, 0)] // Top left corner
-    [InlineData(WorldChunkGrain.WorldSizeX, 0, 1)] // First one, second row
-    [InlineData(WorldChunkGrain.WorldSizeX - 1, 9, 0)] // Top right corner
+    [InlineData(IWorldChunkGrain.WorldSizeX, 0, 1)] // First one, second row
+    [InlineData(IWorldChunkGrain.WorldSizeX - 1, 9, 0)] // Top right corner
     [InlineData(
-        (WorldChunkGrain.WorldSizeX - 1) * WorldChunkGrain.WorldSizeY,
+        (IWorldChunkGrain.WorldSizeX - 1) * IWorldChunkGrain.WorldSizeY,
         0,
-        WorldChunkGrain.WorldSizeY - 1)] // Bottom left corner
+        IWorldChunkGrain.WorldSizeY - 1)] // Bottom left corner
     [InlineData(
-        WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1,
-        WorldChunkGrain.WorldSizeX - 1,
-        WorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
+        IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.WorldSizeY - 1,
+        IWorldChunkGrain.WorldSizeX - 1,
+        IWorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
     public async Task GetPositionByChunkId_ShouldReturnCorrectPosition(
         long chunkId,
         int expectedX,
@@ -184,14 +184,14 @@ public class WorldChunkGrainTest : TestKitBase {
         Assert.Equal(4, visibleChunks.Length);
         Assert.Equal(chunkId + 1, visibleChunks[0].Id); // East
         Assert.Equal(chunkId, visibleChunks[1].Id); // Center
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // South
+        Assert.Equal(chunkId + 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthEast
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // South
     }
 
     [Fact]
     public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsTopRight() {
         // Arrange
-        long chunkId = WorldChunkGrain.WorldSizeX - 1;
+        long chunkId = IWorldChunkGrain.WorldSizeX - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
@@ -200,15 +200,15 @@ public class WorldChunkGrainTest : TestKitBase {
         // Assert
         Assert.Equal(4, visibleChunks.Length);
         Assert.Equal(chunkId, visibleChunks[0].Id); // Center
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthWest
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // South
+        Assert.Equal(chunkId - 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthWest
         Assert.Equal(chunkId - 1, visibleChunks[3].Id); // West
     }
 
     [Fact]
     public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsBottomRight() {
         // Arrange
-        long chunkId = WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1;
+        long chunkId = IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.WorldSizeY - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
@@ -216,16 +216,16 @@ public class WorldChunkGrainTest : TestKitBase {
 
         // Assert
         Assert.Equal(4, visibleChunks.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId - IWorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
         Assert.Equal(chunkId, visibleChunks[1].Id); // Center
         Assert.Equal(chunkId - 1, visibleChunks[2].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // NorthWest
+        Assert.Equal(chunkId - 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // NorthWest
     }
 
     [Fact]
     public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsCenter() {
         // Arrange
-        long chunkId = (WorldChunkGrain.WorldSizeX / 2) * (WorldChunkGrain.WorldSizeY / 2);
+        long chunkId = (IWorldChunkGrain.WorldSizeX / 2) * (IWorldChunkGrain.WorldSizeY / 2);
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
@@ -233,14 +233,14 @@ public class WorldChunkGrainTest : TestKitBase {
 
         // Assert
         Assert.Equal(9, visibleChunks.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
-        Assert.Equal(chunkId + 1 - WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // NorthEast
+        Assert.Equal(chunkId - IWorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId + 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // NorthEast
         Assert.Equal(chunkId + 1, visibleChunks[2].Id); // East
         Assert.Equal(chunkId, visibleChunks[3].Id); // Center
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[4].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[5].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[6].Id); // SouthWest
+        Assert.Equal(chunkId + 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[4].Id); // SouthEast
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[5].Id); // South
+        Assert.Equal(chunkId - 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[6].Id); // SouthWest
         Assert.Equal(chunkId - 1, visibleChunks[7].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[8].Id); // NorthWest
+        Assert.Equal(chunkId - 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[8].Id); // NorthWest
     }
 }

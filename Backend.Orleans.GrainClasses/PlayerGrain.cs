@@ -253,8 +253,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         }
 
         var newChunkPosition = new WorldChunkGrainPosition(
-            newPosition.X / WorldChunkGrain.SizeX,
-            newPosition.Y / WorldChunkGrain.SizeY
+            newPosition.X / IWorldChunkGrain.SizeX,
+            newPosition.Y / IWorldChunkGrain.SizeY
         );
 
         // Enter new chunk if we cross borders
@@ -293,8 +293,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         }
 
         _playerState.State.Position = new SerializableVector2(
-            (chunkGrainPosition.X * WorldChunkGrain.SizeX) + (WorldChunkGrain.SizeX / 2),
-            (chunkGrainPosition.Y * WorldChunkGrain.SizeY) + (WorldChunkGrain.SizeY / 2)
+            (chunkGrainPosition.X * IWorldChunkGrain.SizeX) + (IWorldChunkGrain.SizeX / 2),
+            (chunkGrainPosition.Y * IWorldChunkGrain.SizeY) + (IWorldChunkGrain.SizeY / 2)
         );
         await _playerState.WriteStateAsync();
     }

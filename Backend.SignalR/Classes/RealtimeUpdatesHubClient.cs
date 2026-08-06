@@ -160,6 +160,15 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         );
     }
 
+    public Task<WorldInfoMessage> GetWorldInfo() {
+        return Task.FromResult(new WorldInfoMessage(
+            IWorldChunkGrain.WorldSizeX,
+            IWorldChunkGrain.WorldSizeY,
+            IWorldChunkGrain.SizeX,
+            IWorldChunkGrain.SizeY
+        ));
+    }
+    
     private async Task<IPlayerGrain?> FindPlayerInRegistry(
         string playerName
     ) {

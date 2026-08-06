@@ -7,10 +7,6 @@ namespace Backend.Orleans.GrainClasses;
 
 public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     private readonly List<string> _players = [];
-    public const int SizeX = 30;
-    public const int SizeY = 30;
-    public const int WorldSizeX = 10; // In chunks
-    public const int WorldSizeY = 10; // In chunks
     private readonly string _groupName;
     private readonly ILogger<WorldChunkGrain> _logger;
     private readonly IRealtimeUpdatesOrleans _realtimeUpdates;
@@ -93,8 +89,8 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     public async Task<WorldChunkGrainPosition?> GetPositionByChunkId(
         long chunkId
     ) {
-        int x = (int)(chunkId % WorldSizeX);
-        int y = (int)((chunkId - x) / WorldSizeX);
+        int x = (int)(chunkId % IWorldChunkGrain.WorldSizeX);
+        int y = (int)((chunkId - x) / IWorldChunkGrain.WorldSizeX);
 
         bool withinBounds = await IsPositionWithinBounds(new WorldChunkGrainPosition(x, y));
         return withinBounds ? new WorldChunkGrainPosition(x, y) : null;
@@ -104,7 +100,7 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
         WorldChunkGrainPosition position
     ) {
         bool withinBounds = await IsPositionWithinBounds(position);
-        return withinBounds ? position.Y * WorldSizeX + position.X : null;
+        return withinBounds ? position.Y * IWorldChunkGrain.WorldSizeX + position.X : null;
     }
 
     private static Task<bool> IsPositionWithinBounds(
@@ -112,9 +108,9 @@ public class WorldChunkGrain : BaseGrain, IWorldChunkGrain {
     ) {
         return Task.FromResult(
             position.X >= 0
-            && position.X < WorldSizeX
+            && position.X < IWorldChunkGrain.WorldSizeX
             && position.Y >= 0
-            && position.Y < WorldSizeY
+            && position.Y < IWorldChunkGrain.WorldSizeY
         );
     }
 
