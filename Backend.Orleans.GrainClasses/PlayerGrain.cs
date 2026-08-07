@@ -155,12 +155,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
     }
 
     public async Task OnTickAsync() {
-        await SendTick();
         await MovementUpdate();
-    }
-
-    private async Task SendTick() {
-        await _realtimeUpdates.Tick(await GetKey());
     }
 
     public Task<SerializableVector2> GetPosition() {

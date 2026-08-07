@@ -160,13 +160,16 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         );
     }
 
-    public Task<WorldInfoMessage> GetWorldInfo() {
-        return Task.FromResult(new WorldInfoMessage(
+    public async Task<WorldInfoMessage> GetWorldInfo() {
+        ITickGrain tickGrain = OrleansClient.GetGrain<ITickGrain>(ITickGrain.Key);
+
+        return new WorldInfoMessage(
             IWorldChunkGrain.WorldSizeX,
             IWorldChunkGrain.WorldSizeY,
             IWorldChunkGrain.SizeX,
-            IWorldChunkGrain.SizeY
-        ));
+            IWorldChunkGrain.SizeY,
+            await tickGrain.GetTicks()
+        );
     }
     
     private async Task<IPlayerGrain?> FindPlayerInRegistry(

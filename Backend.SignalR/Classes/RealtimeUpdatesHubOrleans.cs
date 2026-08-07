@@ -52,8 +52,4 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
 
         await _realtimeUpdatesHubClientContext.Groups.RemoveFromGroupAsync(connectionId, groupName);
     }
-
-    public async Task Tick(string groupName) {
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).Tick();
-    }
 }

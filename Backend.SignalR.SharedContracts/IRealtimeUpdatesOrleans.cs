@@ -17,5 +17,4 @@ public interface IRealtimeUpdatesOrleans {
     Task PlayerRemovedFromChunk(string groupName, string playerId, long chunkId);
     Task AddToGroupAsync(string groupName, string connectionId);
     Task RemoveFromGroupAsync(string groupName, string connectionId);
-    Task Tick(string groupName);
 }

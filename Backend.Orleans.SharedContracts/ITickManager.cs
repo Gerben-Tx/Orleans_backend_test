@@ -7,4 +7,6 @@ public interface ITickManager {
     public void UnregisterTickCallback(
         Action tickCallback
     );
+    
+    public long GetTicks();
 }

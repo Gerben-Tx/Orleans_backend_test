@@ -4,5 +4,6 @@ public sealed record WorldInfoMessage (
     int WorldSizeX,
     int WorldSizeY,
     int ChunkSizeX,
-    int ChunkSizeY
+    int ChunkSizeY,
+    long CurrentTick
 );

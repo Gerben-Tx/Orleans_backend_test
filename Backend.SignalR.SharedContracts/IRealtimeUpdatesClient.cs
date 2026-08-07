@@ -14,5 +14,4 @@ public interface IRealtimeUpdatesClient {
         int[][] path
     );
     Task PlayerRemovedFromChunk(string playerId, long chunkId);
-    Task Tick();
 }
