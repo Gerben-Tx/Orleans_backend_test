@@ -23,12 +23,6 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private RandomNumberGenerator _randomNumberGenerator = new();
     private PackedScene _tileScene = GD.Load<PackedScene>("res://ground.tscn");
     private WorldInfoMessage _worldInfo;
-    private Node3D CurrentGroundNode {
-        get {
-            Node3D ret = GetNodeOrNull<Node3D>(CreateGroundChunkName(_currentChunkId));
-            return ret ?? throw new Exception("Current ground node not found!");
-        }
-    }
 
     public Task PlayerNewPathCreated(
         string playerId,
@@ -96,6 +90,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GD.Print("Requesting world info...");
         _worldInfo = await ServerCommunicator.Instance.HubProxy.GetWorldInfo();
         _clientSimulation = new ClientSimulation(_worldInfo.CurrentTick, _worldInfo.TicksPerSecond, HandleTick);
+        GD.Print("World info: " + _worldInfo);
 
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
@@ -132,7 +127,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         WorldChunk[] visibleChunks = chunksMessage.Chunks.ToList()
             .ConvertAll(WorldChunk.FromSignalRWorldChunkContract)
             .ToArray();
-        InstantiateGroundChunks(visibleChunks);
+        UpdateChunks(visibleChunks);
 
         // Load all players in chunk
         GD.Print("Requesting players in all visible chunks...");
@@ -163,7 +158,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         chunkLabel.Text = $"Chunk ID: {currentChunkId}";
     }
 
-    private void InstantiateGroundChunks(
+    private void UpdateChunks(
         WorldChunk[] visibleChunks
     ) {
         if (_loadedChunks.Count > 0) {
@@ -179,10 +174,16 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
             foreach (WorldChunk chunk in chunksToUnload) {
                 GD.Print($"Removing ground chunk {chunk.ChunkId}...");
-                chunk.Tiles.ToList()
-                    .ForEach(tile =>
-                        tile.QueueFree()); // We MUST remove all references to the tiles before freeing the chunk
-                GetNodeOrNull(CreateGroundChunkName(chunk.ChunkId))?.QueueFree();
+                // chunk.Tiles.ToList()
+                //     .ForEach(tile =>
+                //         tile.QueueFree()); // We MUST remove all references to the tiles before freeing the chunk
+                // GetNodeOrNull(CreateGroundChunkName(chunk.ChunkId))?.QueueFree();
+                Node3D chunkNode = GetNodeOrNull<Node3D>(CreateChunkNodeName(chunk.ChunkId));
+                if (chunkNode != null) {
+                    chunkNode.Visible = false;
+                    chunkNode.ProcessMode = ProcessModeEnum.Disabled; // Disable processing of scripts
+                }
+
                 _loadedChunks.Remove(chunk);
 
                 // Remove players that were part of this chunk
@@ -197,27 +198,36 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         visibleChunks.ToList().ForEach(visibleChunk => _loadedChunks.Add(visibleChunk));
 
         foreach (WorldChunk worldChunk in _loadedChunks) {
-            if (HasNode(CreateGroundChunkName(worldChunk.ChunkId))) {
-                // Ground chunk already exists, skip
+            if (HasNode(CreateChunkNodeName(worldChunk.ChunkId))) {
+                // Enable chunk
+                Node3D existingChunkNode = GetNode<Node3D>(CreateChunkNodeName(worldChunk.ChunkId));
+                existingChunkNode.Visible = true;
+                existingChunkNode.ProcessMode = ProcessModeEnum.Inherit;
+
+                // Ground chunk already exists, skip instantiating
                 continue;
             }
 
             GD.Print(
                 $"Instantiating ground chunk {worldChunk.ChunkId} ({worldChunk.X},{worldChunk.Y})...");
 
-            // TODO: if we want to use smaller tile sizes (1,1)
-            //  we should pre load all (?) the chunks beforehand
-            //  There is a lot of stuttering when moving between chunks
-            //  when using small tile sizes (<= 5)
+            // The chunk position in world coordinates
+            Vector2I chunkWorldPosition = new(
+                worldChunk.X * _worldInfo.ChunkSizeX,
+                worldChunk.Y * _worldInfo.ChunkSizeY
+            );
+
+            Node3D chunkNode = new();
+            chunkNode.Name = CreateChunkNodeName(worldChunk.ChunkId);
+            chunkNode.Position = new Vector3(
+                chunkWorldPosition.X,
+                0,
+                chunkWorldPosition.Y
+            );
+            AddChild(chunkNode);
 
             for (int x = 0; x < _worldInfo.ChunkSizeX / Tile.TileSize.X; x++) {
                 for (int y = 0; y < _worldInfo.ChunkSizeY / Tile.TileSize.Y; y++) {
-                    // The chunk position in world coordinates
-                    Vector2I chunkWorldPosition = new(
-                        worldChunk.X * _worldInfo.ChunkSizeX,
-                        worldChunk.Y * _worldInfo.ChunkSizeY
-                    );
-
                     // The ground position in world coordinates
                     Vector2I tiledWorldPosition = new(
                         chunkWorldPosition.X + x,
@@ -230,19 +240,19 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                     );
 
                     MeshInstance3D tileMesh = _tileScene.Instantiate<MeshInstance3D>();
-                    tileMesh.Name = CreateGroundChunkName(worldChunk.ChunkId);
-                    tileMesh.Position = new Vector3(
-                        tilePositionScaled.X,
-                        tileMesh.GetAabb().Size.Y,
-                        tilePositionScaled.Y
-                    );
+                    tileMesh.Position = chunkNode.ToLocal(
+                        new Vector3(
+                            tilePositionScaled.X,
+                            0,
+                            tilePositionScaled.Y
+                        ));
                     DebugApplyColorToGroundBasedOnChunkId(tileMesh, worldChunk.ChunkId);
                     if (x == _worldInfo.ChunkSizeX / Tile.TileSize.X / 2 &&
                         y == _worldInfo.ChunkSizeY / Tile.TileSize.Y / 2) {
                         DebugCreateChunkLabel(tileMesh, worldChunk.ChunkId);
                     }
 
-                    AddChild(tileMesh);
+                    chunkNode.AddChild(tileMesh);
 
                     Tile groundTile = tileMesh as Node as Tile ??
                                       throw new InvalidOperationException("Ground is not a Tile!");
@@ -254,9 +264,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         }
     }
 
-    private static string CreateGroundChunkName(
+    private static string CreateChunkNodeName(
         long chunkId
-    ) => $"GroundChunk{chunkId}";
+    ) => $"Chunk{chunkId}";
 
     /**
      * Applies a color to the ground mesh based on the chunk id.
@@ -396,11 +406,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GD.Print(
             $"Updating player {playerId} from ({playerNode.Position.X},{playerNode.Position.Y}) to ({posX},{posY})...");
 
-        Aabb groundAabb = ((MeshInstance3D)CurrentGroundNode).GetAabb();
         playerNode.Position = new Vector3(
-            posX - (groundAabb.Size.X / 2),
+            posX - (Tile.TileSize.X / 2), // TODO: possible loss of fraction
             0,
-            posY - (groundAabb.Size.Z / 2)
+            posY - (Tile.TileSize.Y / 2) // TODO: possible loss of fraction
         );
     }
 
