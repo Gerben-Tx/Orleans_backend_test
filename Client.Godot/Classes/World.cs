@@ -18,6 +18,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private readonly PlayerList _players = [];
     private ClientSimulation? _clientSimulation = null;
     private long _currentChunkId;
+    private bool _initialized;
     private WorldChunkList _loadedChunks = [];
 
     private RandomNumberGenerator _randomNumberGenerator = new();
@@ -28,6 +29,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         string playerId,
         int[][] path
     ) {
+        if (!_initialized) {
+            return Task.CompletedTask;
+        }
+
         GD.Print($"debug PlayerNewPathCreated: {playerId}, {path}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
 
@@ -44,6 +49,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         int posY,
         int[][] path
     ) {
+        if (!_initialized) {
+            return Task.CompletedTask;
+        }
+
         GD.Print($"debug PlayerAddedToChunk {chunkId}: {playerId}, {playerName}, ({posX},{posY}), {path}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
 
@@ -56,6 +65,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         string playerId,
         long chunkId
     ) {
+        if (!_initialized) {
+            return Task.CompletedTask;
+        }
+
         GD.Print($"debug PlayerRemovedFromChunk {chunkId}: {playerId}");
 
         // TODO: Move to a queue instead of handling this directly
@@ -98,6 +111,9 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             WorldChunk.FromSignalRWorldChunkContract(
                     await ServerCommunicator.Instance.HubProxy.GetCurrentChunk(ServerCommunicator.Instance.PlayerName))
                 .ChunkId;
+
+        // TODO: can we instantiate ALL chunks at once, hidden, and only set visible to visible?
+        //  This way we don't have to create chunks during runtime (which can be heavy)
 
         await InitializeChunkAndPlayerData(_currentChunkId);
     }
@@ -149,6 +165,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 );
             }
         }
+
+        _initialized = true;
     }
 
     private void UpdateChunkLabel(

@@ -1,3 +1,4 @@
+using System;
 using Client.Godot.Classes;
 using Godot;
 
@@ -7,7 +8,11 @@ public partial class Tile : MeshInstance3D {
     [Export] private CollisionShape3D _collisionShape3D = null!;
     public Vector2I WorldPosition { get; set; }
     public WorldChunk WorldChunk { get; set; }
-    public static Vector2I TileSize { get; } = new(5, 5);
+    // @formatter:off
+    public static Vector2I TileSize { get; } = new(5, 5); // TODO: new(1, 1) with chunk size 30 and
+                                                          //  ChunkVisibilityRadius 2 takes long to load.
+                                                          //  Nothing is slow, it's just a lot of tiles to instantiate
+    // @formatter:on 
 
     public override void _EnterTree() {
         base._EnterTree();
