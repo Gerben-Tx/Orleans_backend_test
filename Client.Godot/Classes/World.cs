@@ -273,37 +273,23 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         Vector2 playerPosition,
         long chunkId
     ) {
-        // if (FindPlayer(playerId) != null) {
-        //     return; // Player already exists
-        // }
-        
         Player? playerObj = _players.Find(x => x.Id == playerId);
         if (playerObj != null) {
             return playerObj;
         }
 
-        PackedScene playerScene = GD.Load<PackedScene>("res://Player.tscn");
-        // Node playersNode = GetNode<Node>("%Players");
-        Node playersNode = GetNode<Node>("/root/World/Players");
-        Node3D playerNode = playerScene.Instantiate<Node3D>();
-        playerNode.Name = playerId;
-        playerNode.Position = new Vector3(
-            playerPosition.X,
-            0,
-            playerPosition.Y
-        );
-        playerNode.GetNode<Label3D>("%PlayerNameLabel").Text = playerName;
-        playersNode.AddChild(playerNode);
-        playerNode.Owner = playersNode;
+        // TODO: are we sure this wont created duplicates?
+        playerObj = new Player { Id = playerId, Name = playerName, Path = null };
+        _players.Add(playerObj);
+
+        Node3D playerNode =
+            playerObj.CreatePlayerNode(playerPosition, GetNode<Node>("/root/World/Players"));
 
         _loadedChunks
             .FirstOrDefault(x => x.ChunkId == chunkId, null)
             ?.PlayerIds
             .Add(playerId);
 
-        // TODO: are we sure this wont created duplicates?
-        playerObj = new Player { Id = playerId, Path = null };
-        _players.Add(playerObj);
 
         // Hacky way of making sure the correct camera is the "current".
         // This should live in a player script instead.
