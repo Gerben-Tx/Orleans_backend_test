@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace Backend.Orleans.Silo;
 
 public class TickManager : ITickManager, IAsyncDisposable {
-    private const int Hz = 1; //20; // 20 ticks per second
+    private const uint Hz = 20; // 20 ticks per second
     private readonly TimeSpan _intervalTimeSpan = new(TimeSpan.TicksPerSecond / Hz);
-    private long _ticks;
+    private ulong _ticks;
     private readonly List<Action> _registeredCallbacks = [];
     private readonly PeriodicTimer _timer;
     private readonly ILogger<TickManager> _logger;
@@ -16,7 +16,7 @@ public class TickManager : ITickManager, IAsyncDisposable {
         ILogger<TickManager> logger
     ) {
         _logger = logger;
-        
+
         _timer = new PeriodicTimer(_intervalTimeSpan);
 
         StartAsync();
@@ -35,7 +35,7 @@ public class TickManager : ITickManager, IAsyncDisposable {
             throw;
         }
     }
-    
+
     public void RegisterTickCallback(
         Action tickCallback
     ) {
@@ -50,8 +50,12 @@ public class TickManager : ITickManager, IAsyncDisposable {
         _logger.LogDebug("Unregistered tick callback.");
     }
 
-    public long GetTicks() {
+    public ulong GetTicks() {
         return _ticks;
+    }
+
+    public uint GetTicksPerSecond() {
+        return Hz;
     }
 
     private void Tick() {

@@ -108,7 +108,8 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (chunkId == await currentChunk.GetKey()) {
             playersInChunk = await currentChunk.GetAllPlayers();
         } else {
-            VisibleWorldChunk[] visibleChunks = await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
+            VisibleWorldChunk[] visibleChunks =
+                await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
             VisibleWorldChunk? matchingVisibleChunk =
                 visibleChunks.ToArray().FirstOrDefault(visibleChunk => visibleChunk?.Id == chunkId);
 
@@ -147,6 +148,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (playerGrain == null) {
             return new VisibleWorldChunksMessage([]);
         }
+
         playerGrain.SetChunkVisibilityRadius(radius);
 
         IWorldChunkGrain currentChunkGrain = await playerGrain.GetCurrentChunk();
@@ -154,7 +156,10 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
         return new VisibleWorldChunksMessage(
             visibleWorldChunks.Select(visibleWorldChunk =>
-                    new WorldChunkContract(visibleWorldChunk.Id, visibleWorldChunk.Position.X, visibleWorldChunk.Position.Y)
+                    new WorldChunkContract(
+                        visibleWorldChunk.Id,
+                        visibleWorldChunk.Position.X,
+                        visibleWorldChunk.Position.Y)
                 )
                 .ToArray()
         );
@@ -168,10 +173,11 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             IWorldChunkGrain.WorldSizeY,
             IWorldChunkGrain.SizeX,
             IWorldChunkGrain.SizeY,
-            await tickGrain.GetTicks()
+            await tickGrain.GetTicks(),
+            await tickGrain.GetTicksPerSecond()
         );
     }
-    
+
     private async Task<IPlayerGrain?> FindPlayerInRegistry(
         string playerName
     ) {

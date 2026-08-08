@@ -13,7 +13,11 @@ public class TickGrain : BaseGrain, ITickGrain {
         _tickManager = tickManager;
     }
 
-    public Task<long> GetTicks() {
+    public Task<ulong> GetTicks() {
         return Task.FromResult(_tickManager.GetTicks());
+    }
+
+    public Task<uint> GetTicksPerSecond() {
+        return Task.FromResult(_tickManager.GetTicksPerSecond());
     }
 }
