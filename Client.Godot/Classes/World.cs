@@ -28,6 +28,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         }
     }
     private readonly PlayerList _players = [];
+    private ClientSimulation? _clientSimulation = null;
 
     public async override void _Ready() {
         base._Ready();
@@ -55,6 +56,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         // Get world info
         GD.Print("Requesting world info...");
         _worldInfo = await ServerCommunicator.Instance.HubProxy.GetWorldInfo();
+        _clientSimulation = new ClientSimulation(_worldInfo.CurrentTick, HandleTick);
         
         // Request current chunk id
         GD.Print("Requesting current chunk id...");
@@ -63,6 +65,14 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 await ServerCommunicator.Instance.HubProxy.GetCurrentChunk(ServerCommunicator.Instance.PlayerName)).ChunkId;
         
         await InitializeChunkAndPlayerData(_currentChunkId);
+    }
+
+    public override void _Process(
+        double delta
+    ) {
+        base._Process(delta);
+
+        _clientSimulation?._Process(delta);
     }
 
     private async Task InitializeChunkAndPlayerData(long currentChunkId) {
@@ -463,14 +473,6 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         
         // TODO: Move to a queue instead of handling this directly
         CallDeferred(nameof(HandlePlayerRemovedFromChunk), playerId, chunkId);
-        return Task.CompletedTask;
-    }
-
-    public Task Tick() {
-        // GD.Print("debug Tick");
-        
-        // TODO: Move to a queue instead of handling this directly
-        CallDeferred(nameof(HandleTick));
         return Task.CompletedTask;
     }
 }
