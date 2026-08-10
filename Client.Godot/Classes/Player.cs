@@ -11,7 +11,11 @@ public class Player {
     public Queue<Vector2>? Path { get; set; }
 
     public Vector2? GetNextPathPoint() {
-        return Path?.Dequeue();
+        if (Path?.Count > 0) {
+            return Path.Dequeue();
+        }
+
+        return null;
     }
 
     public void AddPathFromArray(
@@ -28,11 +32,7 @@ public class Player {
         // Node playersNode = GetNode<Node>("%Players");
         Node3D playerNode = playerScene.Instantiate<Node3D>();
         playerNode.Name = Id;
-        playerNode.Position = new Vector3(
-            playerPosition.X,
-            0,
-            playerPosition.Y
-        );
+        playerNode.Position = new Vector3(playerPosition.X, 0, playerPosition.Y);
         playerNode.GetNode<Label3D>("%PlayerNameLabel").Text = Name;
         playersNode.AddChild(playerNode);
         playerNode.Owner = playersNode;

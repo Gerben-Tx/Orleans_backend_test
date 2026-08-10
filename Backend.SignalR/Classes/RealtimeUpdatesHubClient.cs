@@ -178,6 +178,33 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         );
     }
 
+    public async Task SendMovementIntent(
+        string playerName,
+        int destinationX,
+        int destinationY,
+        ulong tick
+    ) {
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return;
+        }
+
+        await playerGrain.ReceiveMovementIntent(destinationX, destinationY, tick);
+    }
+
+    public async Task<PlayerPositionMessage?> DebugGetPlayerPosition(
+        string playerName
+    ) {
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return null;
+        }
+
+        SerializableVector2 position = await playerGrain.GetPosition();
+
+        return new PlayerPositionMessage() { X = position.X, Y = position.Y };
+    }
+
     private async Task<IPlayerGrain?> FindPlayerInRegistry(
         string playerName
     ) {

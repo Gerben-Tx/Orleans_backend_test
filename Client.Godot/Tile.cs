@@ -1,12 +1,16 @@
-using System;
 using Client.Godot.Classes;
 using Godot;
 
 namespace Client.Godot;
 
 public partial class Tile : MeshInstance3D {
+    [Signal]
+    public delegate void OnTileClickedEventHandler(
+        Vector2I position
+    );
+
     [Export] private CollisionShape3D _collisionShape3D = null!;
-    public Vector2I WorldPosition { get; set; }
+    public Vector2I ServerPosition { get; set; }
     public WorldChunk WorldChunk { get; set; }
     // @formatter:off
     public static Vector2I TileSize { get; } = new(5, 5); // TODO: new(1, 1) with chunk size 30 and
@@ -49,9 +53,33 @@ public partial class Tile : MeshInstance3D {
             && mouseButton.ButtonIndex == MouseButton.Left
             && mouseButton.Pressed
            ) {
-            GD.Print($"Tile clicked, position: {WorldPosition}, chunk: {WorldChunk.ChunkId}");
+            GD.Print($"Tile clicked, position: {ServerPosition}, chunk: {WorldChunk.ChunkId}");
 
-            // TODO: Send tile click event to server
+            EmitSignalOnTileClicked(ServerPosition);
         }
     }
+
+#if DEBUG
+    public void DebugCreateLabel() {
+        // Server position
+        Label3D serverPositionLabel = new();
+        serverPositionLabel.Text = $"({ServerPosition.X}, {ServerPosition.Y})";
+        serverPositionLabel.Position = new Vector3(0, 1, 1);
+        serverPositionLabel.Modulate = new Color(1, 1, 1);
+        serverPositionLabel.OutlineModulate = new Color(0, 0, 0);
+        serverPositionLabel.PixelSize = 0.015f;
+        serverPositionLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+        AddChild(serverPositionLabel);
+
+        // // Local position
+        // Label3D localPositionLabel = new();
+        // localPositionLabel.Text = $"({GlobalPosition.X}, {GlobalPosition.Z})";
+        // localPositionLabel.Position = new Vector3(0, 1, 0);
+        // localPositionLabel.Modulate = new Color(0, .5f, 1);
+        // localPositionLabel.OutlineModulate = new Color(0, 0, 0);
+        // localPositionLabel.PixelSize = 0.015f;
+        // localPositionLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
+        // AddChild(localPositionLabel);
+    }
+#endif
 }

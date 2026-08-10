@@ -25,7 +25,7 @@ public class TickManager : ITickManager, IAsyncDisposable {
     private async Task StartAsync() {
         try {
             while (await _timer.WaitForNextTickAsync(_stop.Token)) {
-                _logger.LogDebug("Tick: {_ticks}", _ticks);
+                // _logger.LogDebug("Tick: {_ticks}", _ticks);
                 Tick();
                 _ticks++;
             }

@@ -9,7 +9,7 @@ public class ClientSimulation {
     /// This accounts for potentially laggy clients.
     /// // TODO: this should be calculated by the server?
     /// </summary>
-    private const int TickOffset = 5;
+    private const int TickOffset = 10;
 
     /// <summary>
     /// Maximum number of simulation steps per frame.
@@ -28,14 +28,14 @@ public class ClientSimulation {
     /// Accumulates the time between frames and is decremented on each frame by the <see cref="_tickDurationSeconds"/>
     /// </summary>
     private double _accumulator;
-    private ulong? _ticks;
+    public ulong Ticks { get; private set; }
 
     public ClientSimulation(
         ulong ticks,
         uint serverTicksPerSecond,
         Action tickHandler
     ) {
-        _ticks = ticks + TickOffset;
+        SynchronizeTicks(ticks);
         _tickHandler = tickHandler; // TODO: Not sure how to design this yet, for now it is just 1 handler
         _tickDurationSeconds = 1.0 / serverTicksPerSecond;
     }
@@ -65,10 +65,16 @@ public class ClientSimulation {
             _tickHandler();
 
             // Increment counters
-            _ticks++;
+            Ticks++;
             steps++;
 
-            GD.Print($"Tick: {_ticks}, Step: {steps}");
+            // GD.Print($"Tick: {Ticks}, Step: {steps}");
         }
+    }
+
+    public void SynchronizeTicks(
+        ulong ticks
+    ) {
+        Ticks = ticks + TickOffset;
     }
 }

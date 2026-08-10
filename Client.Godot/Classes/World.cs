@@ -16,7 +16,7 @@ namespace Client.Godot.Classes;
 public partial class World : Node3D, IRealtimeUpdatesClient {
     private const int ChunkVisibilityRadius = 2;
     private readonly PlayerList _players = [];
-    private ClientSimulation? _clientSimulation = null;
+    private ClientSimulation _clientSimulation = null!;
     private long _currentChunkId;
     private bool _initialized;
     private WorldChunkList _loadedChunks = [];
@@ -33,7 +33,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             return Task.CompletedTask;
         }
 
-        GD.Print($"debug PlayerNewPathCreated: {playerId}, {path}");
+        GD.Print(
+            $"debug PlayerNewPathCreated: {playerId}, {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
 
         // TODO: Move to a queue instead of handling this directly
@@ -230,7 +231,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 $"Instantiating ground chunk {worldChunk.ChunkId} ({worldChunk.X},{worldChunk.Y})...");
 
             // The chunk position in world coordinates
-            Vector2I chunkWorldPosition = new(
+            Vector2I chunkServerPosition = new(
                 worldChunk.X * _worldInfo.ChunkSizeX,
                 worldChunk.Y * _worldInfo.ChunkSizeY
             );
@@ -238,31 +239,25 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             Node3D chunkNode = new();
             chunkNode.Name = CreateChunkNodeName(worldChunk.ChunkId);
             chunkNode.Position = new Vector3(
-                chunkWorldPosition.X,
+                chunkServerPosition.X,
                 0,
-                chunkWorldPosition.Y
+                chunkServerPosition.Y
             );
             AddChild(chunkNode);
 
-            for (int x = 0; x < _worldInfo.ChunkSizeX / Tile.TileSize.X; x++) {
-                for (int y = 0; y < _worldInfo.ChunkSizeY / Tile.TileSize.Y; y++) {
-                    // The ground position in world coordinates
-                    Vector2I tiledWorldPosition = new(
-                        chunkWorldPosition.X + x,
-                        chunkWorldPosition.Y + y
-                    );
-
-                    Vector2 tilePositionScaled = new(
-                        chunkWorldPosition.X + (x * Tile.TileSize.X),
-                        chunkWorldPosition.Y + (y * Tile.TileSize.Y)
+            for (int y = 0; y < _worldInfo.ChunkSizeY / Tile.TileSize.Y; y++) {
+                for (int x = 0; x < _worldInfo.ChunkSizeX / Tile.TileSize.X; x++) {
+                    Vector2I tileClientPosition = new(
+                        chunkServerPosition.X + (x * Tile.TileSize.X),
+                        chunkServerPosition.Y + (y * Tile.TileSize.Y)
                     );
 
                     MeshInstance3D tileMesh = _tileScene.Instantiate<MeshInstance3D>();
                     tileMesh.Position = chunkNode.ToLocal(
                         new Vector3(
-                            tilePositionScaled.X,
+                            tileClientPosition.X,
                             0,
-                            tilePositionScaled.Y
+                            tileClientPosition.Y
                         ));
                     DebugApplyColorToGroundBasedOnChunkId(tileMesh, worldChunk.ChunkId);
                     if (x == _worldInfo.ChunkSizeX / Tile.TileSize.X / 2 &&
@@ -274,12 +269,27 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
                     Tile groundTile = tileMesh as Node as Tile ??
                                       throw new InvalidOperationException("Ground is not a Tile!");
-                    groundTile.WorldPosition = tiledWorldPosition;
+                    groundTile.ServerPosition = tileClientPosition;
                     groundTile.WorldChunk = worldChunk;
+                    groundTile.OnTileClicked += GroundTileOnOnTileClicked;
+#if DEBUG
+                    groundTile.DebugCreateLabel();
+#endif
                     worldChunk.Tiles.Add(groundTile);
                 }
             }
         }
+    }
+
+    private void GroundTileOnOnTileClicked(
+        Vector2I position
+    ) {
+        ServerCommunicator.Instance.HubProxy.SendMovementIntent(
+            ServerCommunicator.Instance.PlayerName,
+            position.X,
+            position.Y,
+            _clientSimulation.Ticks
+        );
     }
 
     private static string CreateChunkNodeName(
@@ -319,12 +329,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         Label3D chunkLabel = new();
         chunkLabel.Text = chunkId.ToString();
         chunkLabel.Position = new Vector3(0, 2, 0);
-        chunkLabel.FontSize = 16;
         chunkLabel.Modulate = new Color(1, 1, 1);
         chunkLabel.OutlineModulate = new Color(0, 0, 0);
-        chunkLabel.OutlineSize = 8;
+        chunkLabel.PixelSize = 0.035f;
         chunkLabel.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
-        chunkLabel.FixedSize = true;
         groundMesh.AddChild(chunkLabel);
     }
 
@@ -352,6 +360,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         if (playerObj != null) {
             return playerObj;
         }
+
+        GD.Print($"Creating player {playerId} at ({playerPosition.X},{playerPosition.Y}) in chunk {chunkId}...");
 
         // TODO: are we sure this wont created duplicates?
         playerObj = new Player { Id = playerId, Name = playerName, Path = null };
@@ -424,11 +434,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GD.Print(
             $"Updating player {playerId} from ({playerNode.Position.X},{playerNode.Position.Y}) to ({posX},{posY})...");
 
-        playerNode.Position = new Vector3(
-            posX - (Tile.TileSize.X / 2), // TODO: possible loss of fraction
-            0,
-            posY - (Tile.TileSize.Y / 2) // TODO: possible loss of fraction
-        );
+        playerNode.Position = new Vector3(posX, 0, posY);
     }
 
     /// <summary>
@@ -479,6 +485,38 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     private void HandleTick() {
+# if DEBUG
+        PlayerPositionMessage? debugPlayerPositionMessage = Task.Run(() =>
+                ServerCommunicator.Instance.HubProxy.DebugGetPlayerPosition(ServerCommunicator.Instance.PlayerName))
+            .GetAwaiter().GetResult();
+        GD.Print($"Player position: {debugPlayerPositionMessage?.X}, {debugPlayerPositionMessage?.Y}");
+        if (debugPlayerPositionMessage != null) {
+            DebugDraw3D.DrawCapsule(
+                new Vector3(debugPlayerPositionMessage.X, 0, debugPlayerPositionMessage.Y),
+                Quaternion.Identity,
+                0.5f,
+                2.0f,
+                new Color(1, 0, 0),
+                1.0f);
+        }
+
+        WorldInfoMessage debugWorldInfoMessage = Task.Run(() => ServerCommunicator.Instance.HubProxy.GetWorldInfo())
+            .GetAwaiter().GetResult();
+        GetNode<Label>("%ServerTickLabel").Text = $"Server Tick: {debugWorldInfoMessage.CurrentTick}";
+        GetNode<Label>("%ClientTickLabel").Text = $"Client Tick: {_clientSimulation.Ticks}";
+        GetNode<Label>("%DifferenceTickLabel").Text =
+            $"Difference: {_clientSimulation.Ticks - debugWorldInfoMessage.CurrentTick}";
+# endif
+
+        // Synchronize the client tick with the server tick periodically.
+        // This prevents the client from being out of sync with the server
+        // and never catching up.
+        if (_clientSimulation.Ticks % 100 == 0) {
+            WorldInfoMessage worldInfoMessage = Task.Run(() => ServerCommunicator.Instance.HubProxy.GetWorldInfo())
+                .GetAwaiter().GetResult();
+            _clientSimulation.SynchronizeTicks(worldInfoMessage.CurrentTick);
+        }
+
         _players.ForEach(player => {
             Vector2? nextPathPoint = player.GetNextPathPoint();
             if (nextPathPoint == null) {
