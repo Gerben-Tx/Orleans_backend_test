@@ -161,12 +161,13 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // Make sure we are not following a path anymore
         _path.Clear();
 
-        // Enter the chunk
-        // Do this before moving the player, so that we can get the chunk position.
-        // Otherwise, the chunk might be outside the "visible radius"
-        await EnterChunk(chunkGrain);
 
-        // Move player to the center of the chunk
+        #region Move player to the center of the chunk
+
+        // We update the player position first so that when EnterChunk
+        // sends its broadcast, the new player position is send with it
+        // and the player is rendered in the chunk, rather than on it's old pos
+
         WorldChunkGrainPosition? chunkGrainPosition = await chunkGrain.GetPosition();
         if (chunkGrainPosition == null) {
             _logger.LogWarning("Could not find position for chunk {ChunkId}!", chunkGrain.GetKey());
@@ -178,6 +179,10 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             (chunkGrainPosition.Y * IWorldChunkGrain.SizeY) + (IWorldChunkGrain.SizeY / 2)
         );
         await _playerState.WriteStateAsync();
+
+        #endregion
+
+        await EnterChunk(chunkGrain);
     }
 
     public async Task CreateNewPathAndNotify(

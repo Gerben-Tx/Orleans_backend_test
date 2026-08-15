@@ -6,11 +6,11 @@ namespace Backend.Orleans.Silo;
 public class TickManager : ITickManager, IAsyncDisposable {
     private const uint Hz = 20; // 20 ticks per second
     private readonly TimeSpan _intervalTimeSpan = new(TimeSpan.TicksPerSecond / Hz);
-    private ulong _ticks;
-    private readonly List<Action> _registeredCallbacks = [];
-    private readonly PeriodicTimer _timer;
     private readonly ILogger<TickManager> _logger;
+    private readonly List<Action> _registeredCallbacks = [];
     private readonly CancellationTokenSource _stop = new();
+    private readonly PeriodicTimer _timer;
+    private ulong _ticks;
 
     public TickManager(
         ILogger<TickManager> logger
@@ -22,17 +22,19 @@ public class TickManager : ITickManager, IAsyncDisposable {
         StartAsync();
     }
 
-    private async Task StartAsync() {
-        try {
-            while (await _timer.WaitForNextTickAsync(_stop.Token)) {
-                // _logger.LogDebug("Tick: {_ticks}", _ticks);
-                Tick();
-                _ticks++;
-            }
-        } catch (OperationCanceledException e) {
-            // Is this a clean shutdown?
-            _logger.LogError(e, "Received OperationCanceledException");
-            throw;
+    public async ValueTask DisposeAsync() {
+        await CastAndDispose(_timer);
+        await CastAndDispose(_stop);
+
+        return;
+
+        static async ValueTask CastAndDispose(
+            IDisposable resource
+        ) {
+            if (resource is IAsyncDisposable resourceAsyncDisposable)
+                await resourceAsyncDisposable.DisposeAsync();
+            else
+                resource.Dispose();
         }
     }
 
@@ -58,6 +60,20 @@ public class TickManager : ITickManager, IAsyncDisposable {
         return Hz;
     }
 
+    private async Task StartAsync() {
+        try {
+            while (await _timer.WaitForNextTickAsync(_stop.Token)) {
+                // _logger.LogDebug("Tick: {_ticks}", _ticks);
+                Tick();
+                _ticks++;
+            }
+        } catch (OperationCanceledException e) {
+            // Is this a clean shutdown?
+            _logger.LogError(e, "Received OperationCanceledException");
+            throw;
+        }
+    }
+
     private void Tick() {
         // _logger.LogDebug("Ticking...");
         foreach (Action callback in _registeredCallbacks) {
@@ -69,21 +85,5 @@ public class TickManager : ITickManager, IAsyncDisposable {
             }
         }
         // _logger.LogDebug("Ticked.");
-    }
-
-    public async ValueTask DisposeAsync() {
-        await CastAndDispose(_timer);
-        await CastAndDispose(_stop);
-
-        return;
-
-        static async ValueTask CastAndDispose(
-            IDisposable resource
-        ) {
-            if (resource is IAsyncDisposable resourceAsyncDisposable)
-                await resourceAsyncDisposable.DisposeAsync();
-            else
-                resource.Dispose();
-        }
     }
 }

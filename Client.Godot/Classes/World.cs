@@ -149,23 +149,27 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         // Load all players in chunk
         GD.Print("Requesting players in all visible chunks...");
-        // TODO:  System.InvalidOperationException: Collection was modified; enumeration operation may not execute.
-        //  This must be handled synchronously, AFTER we unload the chunks
-        foreach (WorldChunk chunk in _loadedChunks) {
-            List<PlayerListMessage> playersInChunk =
-                await ServerCommunicator.Instance.HubProxy.GetPlayersInChunk(
-                    ServerCommunicator.Instance.PlayerName,
-                    chunk.ChunkId
-                );
-            GD.Print($"Players in chunk {chunk.ChunkId}: {playersInChunk.Count}");
-            foreach (PlayerListMessage playerListMessage in playersInChunk) {
-                FindOrCreatePlayer(
-                    playerListMessage.Id,
-                    playerListMessage.Name,
-                    new Vector2(playerListMessage.PositionX, playerListMessage.PositionY),
-                    chunk.ChunkId
-                );
+        try {
+            foreach (WorldChunk chunk in _loadedChunks) {
+                List<PlayerListMessage> playersInChunk =
+                    await ServerCommunicator.Instance.HubProxy.GetPlayersInChunk(
+                        ServerCommunicator.Instance.PlayerName,
+                        chunk.ChunkId
+                    );
+                GD.Print($"Players in chunk {chunk.ChunkId}: {playersInChunk.Count}");
+                foreach (PlayerListMessage playerListMessage in playersInChunk) {
+                    FindOrCreatePlayer(
+                        playerListMessage.Id,
+                        playerListMessage.Name,
+                        new Vector2(playerListMessage.PositionX, playerListMessage.PositionY),
+                        chunk.ChunkId
+                    );
+                }
             }
+        } catch (InvalidOperationException e) {
+            GD.PrintErr("TODO: Handle this exception: " + e);
+            // TODO:  System.InvalidOperationException: Collection was modified; enumeration operation may not execute.
+            //  This must be handled synchronously, AFTER we unload the chunks
         }
 
         _initialized = true;
@@ -486,20 +490,30 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     private void HandleTick() {
 # if DEBUG
-        PlayerPositionMessage? debugPlayerPositionMessage = Task.Run(() =>
-                ServerCommunicator.Instance.HubProxy.DebugGetPlayerPosition(ServerCommunicator.Instance.PlayerName))
-            .GetAwaiter().GetResult();
-        GD.Print($"Player position: {debugPlayerPositionMessage?.X}, {debugPlayerPositionMessage?.Y}");
-        if (debugPlayerPositionMessage != null) {
-            DebugDraw3D.DrawCapsule(
-                new Vector3(debugPlayerPositionMessage.X, 0, debugPlayerPositionMessage.Y),
-                Quaternion.Identity,
-                0.5f,
-                2.0f,
-                new Color(1, 0, 0),
-                1.0f);
+        // Show players server position
+        // so we can match it to the client position
+        foreach (Player player in _players) {
+            if (!DisplayServer.WindowCanDraw()) {
+                // Ignore headless debug clients
+                continue;
+            }
+
+            PlayerPositionMessage? debugPlayerPositionMessage = Task.Run(() =>
+                    ServerCommunicator.Instance.HubProxy.DebugGetPlayerPosition(player.Name))
+                .GetAwaiter().GetResult();
+            // GD.Print($"Player position: {debugPlayerPositionMessage?.X}, {debugPlayerPositionMessage?.Y}");
+            if (debugPlayerPositionMessage != null) {
+                DebugDraw3D.DrawCapsule(
+                    new Vector3(debugPlayerPositionMessage.X, 0, debugPlayerPositionMessage.Y),
+                    Quaternion.Identity,
+                    0.5f,
+                    2.0f,
+                    new Color(1, 0, 0),
+                    1.0f);
+            }
         }
 
+        // Show world info
         WorldInfoMessage debugWorldInfoMessage = Task.Run(() => ServerCommunicator.Instance.HubProxy.GetWorldInfo())
             .GetAwaiter().GetResult();
         GetNode<Label>("%ServerTickLabel").Text = $"Server Tick: {debugWorldInfoMessage.CurrentTick}";
@@ -518,6 +532,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         }
 
         _players.ForEach(player => {
+            (player as ClientPlayer)?.HandleTick(_worldInfo);
+
             Vector2? nextPathPoint = player.GetNextPathPoint();
             if (nextPathPoint == null) {
                 return;
