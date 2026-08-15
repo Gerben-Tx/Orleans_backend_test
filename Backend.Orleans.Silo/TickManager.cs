@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace Backend.Orleans.Silo;
 
 public class TickManager : ITickManager, IAsyncDisposable {
-    private const uint Hz = 20; // 20 ticks per second
+    private const uint Hz = 5; //20; // 20 ticks per second
     private readonly TimeSpan _intervalTimeSpan = new(TimeSpan.TicksPerSecond / Hz);
     private readonly ILogger<TickManager> _logger;
     private readonly List<Action> _registeredCallbacks = [];
