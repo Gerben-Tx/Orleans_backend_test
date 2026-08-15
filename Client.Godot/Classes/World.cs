@@ -16,6 +16,7 @@ namespace Client.Godot.Classes;
 public partial class World : Node3D, IRealtimeUpdatesClient {
     private const int ChunkVisibilityRadius = 2;
     private readonly PlayerList _players = [];
+    private ClientPlayer _clientPlayer = null!;
     private ClientSimulation _clientSimulation = null!;
     private long _currentChunkId;
     private bool _initialized;
@@ -284,12 +285,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private void GroundTileOnOnTileClicked(
         Vector2I position
     ) {
-        ServerCommunicator.Instance.HubProxy.SendMovementIntent(
-            ServerCommunicator.Instance.PlayerName,
-            position.X,
-            position.Y,
-            _clientSimulation.Ticks
-        );
+        _clientPlayer.MoveTo(position);
     }
 
     private static string CreateChunkNodeName(
@@ -363,24 +359,28 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         GD.Print($"Creating player {playerId} at ({playerPosition.X},{playerPosition.Y}) in chunk {chunkId}...");
 
-        // TODO: are we sure this wont created duplicates?
-        playerObj = new Player { Id = playerId, Name = playerName, Path = null };
-        _players.Add(playerObj);
+        Node3D playerNode = Player.CreatePlayerNode(
+            playerPosition,
+            GetNode<Node>("/root/World/Players"),
+            playerId,
+            playerName
+        );
 
-        Node3D playerNode =
-            playerObj.CreatePlayerNode(playerPosition, GetNode<Node>("/root/World/Players"));
+        // TODO: are we sure this wont created duplicates?
+        playerObj = new Player(playerId, playerName, playerNode);
+        if (IsClientPlayer(playerId)) {
+            // Convert player to a client player
+            _clientPlayer = new ClientPlayer(_clientSimulation, playerObj);
+
+            playerObj = _clientPlayer;
+        }
+
+        _players.Add(playerObj);
 
         _loadedChunks
             .FirstOrDefault(x => x.ChunkId == chunkId, null)
             ?.PlayerIds
             .Add(playerId);
-
-
-        // Hacky way of making sure the correct camera is the "current".
-        // This should live in a player script instead.
-        if (IsClientPlayer(playerId)) {
-            playerNode.GetNode<Camera3D>("Camera3D").Current = true;
-        }
 
         return playerObj;
     }
