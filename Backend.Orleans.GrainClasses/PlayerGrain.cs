@@ -9,7 +9,7 @@ using Path = Roy_T.AStar.Paths.Path;
 namespace Backend.Orleans.GrainClasses;
 
 public class PlayerGrain : BaseGrain, IPlayerGrain {
-    private readonly List<PlayerInput> _inputs = new(); // TODO: this is never cleaned up. Old inputs are never removed.
+    private readonly List<PlayerInput> _inputs = new();
     private readonly ILogger<PlayerGrain> _logger;
     private readonly Queue<SerializableVector2> _path = new();
     private readonly IPathfindingService _pathFindingService;
@@ -111,6 +111,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // }
 
         // Dequeue inputs and apply them
+        _inputs.RemoveAll(input => input.Tick < _tickManager.GetTicks()); // Remove old inputs
         List<PlayerInput> inputsForThisTick = _inputs.Where(input => input.Tick == _tickManager.GetTicks()).ToList();
         foreach (PlayerInput playerInput in inputsForThisTick) {
             _inputs.Remove(playerInput);
