@@ -370,7 +370,6 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             playerName
         );
 
-        // TODO: are we sure this wont created duplicates?
         playerObj = new Player(playerId, playerName, playerNode);
         if (IsClientPlayer(playerId)) {
             // Convert player to a client player
@@ -458,7 +457,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         Array<Array<int>> path
     ) {
         // Update the path for the player
-        // TODO: replace this ugly hack. The playernamer also never gets updated after this...
+        // TODO: replace this ugly hack. The player name also never gets updated after this...
         Player player = FindOrCreatePlayer(playerId, "Unknown", new Vector2(0, 0), 0);
         player.AddPathFromArray(path);
     }

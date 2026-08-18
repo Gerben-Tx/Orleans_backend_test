@@ -117,7 +117,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
             _inputs.Remove(playerInput);
             playerInput.Apply(this);
         }
-        // TODO: what if we have a lot of inputs and can't handle all of them in this tick? Do we drop them?
 
         // Simulate movement
         await MovementUpdate();
@@ -237,7 +236,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         await base.OnDeactivateAsync(reason, cancellationToken);
 
-        // TODO: Test this!
         _tickManager.UnregisterTickCallback(TickCallback);
     }
 
