@@ -110,9 +110,11 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         //     return;
         // }
 
+        ulong currentTick = _tickManager.GetTicks();
+
         // Dequeue inputs and apply them
-        _inputs.RemoveAll(input => input.Tick < _tickManager.GetTicks()); // Remove old inputs
-        List<PlayerInput> inputsForThisTick = _inputs.Where(input => input.Tick == _tickManager.GetTicks()).ToList();
+        _inputs.RemoveAll(input => input.Tick < currentTick); // Remove old inputs
+        List<PlayerInput> inputsForThisTick = _inputs.Where(input => input.Tick == currentTick).ToList();
         foreach (PlayerInput playerInput in inputsForThisTick) {
             _inputs.Remove(playerInput);
             playerInput.Apply(this);
@@ -194,12 +196,9 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
 
-        // Random rand = new();
         Path? path = await _pathFindingService.FindPath(
             _playerState.State.Position.ToVector2(),
             new Vector2(
-                // rand.Next(0, _pathFindingService.GetGrid().Columns),
-                // rand.Next(0, _pathFindingService.GetGrid().Rows)
                 destinationX,
                 destinationY
             )
