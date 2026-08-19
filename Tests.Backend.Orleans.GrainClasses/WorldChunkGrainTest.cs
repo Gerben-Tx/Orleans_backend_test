@@ -38,6 +38,30 @@ public class WorldChunkGrainTest : TestKitBase {
         Assert.Equal($"{expectedX},{expectedY}", $"{position?.X},{position?.Y}");
     }
 
+    [Theory]
+    [InlineData(1, 0L, 4)] // Top left corner (0,0)
+    [InlineData(1, 1L, 6)] // Top lef corner + 1 (1,0)
+    [InlineData(1, 0L + IWorldChunkGrain.WorldSizeX, 6)] // Second row, left (0,1) 
+    [InlineData(1, 1L + IWorldChunkGrain.WorldSizeX, 9)] // Second row, left + 1  (1,1)
+    [InlineData(2, 0L, 9)] // Top left corner (0,0)
+    [InlineData(2, 1L, 12)] // Top lef corner + 1 (1,0)
+    [InlineData(2, 0L + IWorldChunkGrain.WorldSizeX, 12)] // Second row, left (0,1) 
+    [InlineData(2, 1L + IWorldChunkGrain.WorldSizeX, 16)] // Second row, left + 1  (1,1)
+    public async Task GetVisibleChunks_ShouldReturnCorrectChunks(
+        int radius,
+        long chunkId,
+        int expectedVisibleChunks
+    ) {
+        // Arrange
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunks(radius);
+
+        // Assert
+        Assert.Equal(expectedVisibleChunks, visibleChunks.Length);
+    }
+
     [Fact]
     public async Task AddPlayer_ShouldNotifyRealtimeUpdatesAndAvoidDuplicates() {
         // Arrange
@@ -63,7 +87,7 @@ public class WorldChunkGrainTest : TestKitBase {
                 chunkId,
                 position.X,
                 position.Y,
-                It.Is<int[][]>(realPath => 
+                It.Is<int[][]>(realPath =>
                     realPath.Zip(path).All(pair => pair.First.SequenceEqual(pair.Second)))
             ))
             .Returns(Task.CompletedTask)
@@ -125,6 +149,20 @@ public class WorldChunkGrainTest : TestKitBase {
         Assert.Equal(2, players.Count);
         Assert.Contains(player1Mock.Object, players);
         Assert.Contains(player2Mock.Object, players);
+    }
+
+    [Fact]
+    public async Task GetPosition_ShouldReturnCorrectPosition() {
+        // Arrange
+        WorldChunkGrainPosition expectedPosition = new(1, 0); // Chunk id 1 has position (1,0)
+
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(1L);
+
+        // Act
+        WorldChunkGrainPosition? chunkGrainPosition = await grain.GetPosition();
+
+        // Assert
+        Assert.Equal(expectedPosition, chunkGrainPosition);
     }
 
     [Fact]
