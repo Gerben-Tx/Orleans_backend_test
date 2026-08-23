@@ -23,6 +23,7 @@ jobs:
   build-and-test:
 
     name: build-and-test-${{matrix.os}}
+    if: github.event.pull_request.draft == false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
