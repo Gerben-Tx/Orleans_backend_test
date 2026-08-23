@@ -253,6 +253,27 @@ public class WorldChunkGrainTest : TestKitBase {
     }
 
     [Fact]
+    public async Task IsPlayerInChunk_ShouldReturnTrueWhenPlayerIsInChunk() {
+        // Arrange
+        Guid playerId = Guid.NewGuid();
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(0L);
+
+        await grain.AddPlayer(
+            playerId.ToString(),
+            "Player One",
+            new SerializableVector2(1, 2),
+            new Queue<SerializableVector2>());
+
+        // Act
+        bool result = await grain.IsPlayerInChunk(playerId.ToString());
+        bool result2 = await grain.IsPlayerInChunk(Guid.NewGuid().ToString());
+
+        // Assert
+        Assert.True(result);
+        Assert.False(result2);
+    }
+
+    [Fact]
     public async Task RemovePlayer_ShouldNotifyWhenPresentAndIgnoreWhenAbsent() {
         // Arrange
         long chunkId = 7L;
