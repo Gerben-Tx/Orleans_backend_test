@@ -10,12 +10,6 @@ using Orleans.TestKit;
 namespace Tests.Backend.SignalR;
 
 public class RealtimeUpdatesHubClientTests : TestKitBase {
-    private readonly Mock<IClusterClient> _orleansClientMock;
-    private readonly Mock<ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>>> _loggerMock;
-    private readonly RealtimeUpdatesHubClient _realtimeUpdatesHubClient;
-    private const string PlayerName = "Test Player";
-    private const string ConnectionId = "Connection123";
-
     public RealtimeUpdatesHubClientTests() {
         _orleansClientMock = new Mock<IClusterClient>();
         _loggerMock = new Mock<ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>>>();
@@ -34,51 +28,26 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
                 });
     }
 
-    [Fact]
-    public async Task RegisterPlayerGrain_ShouldCreateNew_WhenNotFound() {
-        // Arrange
+    private readonly Mock<IClusterClient> _orleansClientMock;
+    private readonly Mock<ILogger<RealtimeUpdatesHub<IRealtimeUpdatesClient>>> _loggerMock;
+    private readonly RealtimeUpdatesHubClient _realtimeUpdatesHubClient;
+    private const string PlayerName = "Test Player";
+    private const string ConnectionId = "Connection123";
 
-        // Player registry mock
-        var playerRegistryMock = new Mock<IPlayerRegistry>();
-        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
-            .Returns(playerRegistryMock.Object)
-            .Verifiable(Times.Exactly(2));
-        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
-            .ReturnsAsync((IPlayerGrain?)null)
-            .Verifiable(Times.Once);
-        playerRegistryMock.Setup(x => x.AddPlayer(PlayerName, It.IsAny<Guid>()))
-            .Returns(Task.CompletedTask)
+    [Fact]
+    public async Task DebugMoveToChunk_ShouldEnter_WhenPlayerFound() {
+        // Arrange
+        int newChunkId = 2;
+
+        // Chunk grain mock
+        var newChunkGrainMock = new Mock<IWorldChunkGrain>();
+        _orleansClientMock.Setup(x => x.GetGrain<IWorldChunkGrain>(newChunkId, null))
+            .Returns(newChunkGrainMock.Object)
             .Verifiable(Times.Once);
 
         // Player grain mock
         var playerGrainMock = new Mock<IPlayerGrain>();
-        _orleansClientMock.Setup(x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null))
-            .Returns(playerGrainMock.Object)
-            .Verifiable(Times.Once);
-        playerGrainMock.Setup(x => x.Initialize(ConnectionId, PlayerName))
-            .Returns(Task.CompletedTask)
-            .Verifiable(Times.Once);
-
-        // Act
-        await _realtimeUpdatesHubClient.RegisterPlayerGrain(PlayerName);
-
-        // Assert
-        _orleansClientMock.Verify();
-        playerRegistryMock.Verify();
-        playerGrainMock.Verify();
-    }
-
-    [Fact]
-    public async Task RegisterPlayerGrain_ShouldUseExisting_WhenFound() {
-        // Arrange
-
-        // Player grain mock
-        var playerGrainMock = new Mock<IPlayerGrain>();
-        _orleansClientMock.Verify(
-            x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null),
-            Times.Never);
-        playerGrainMock.Setup(x => x.Initialize(ConnectionId, PlayerName))
-            .Returns(Task.CompletedTask)
+        playerGrainMock.Setup(x => x.DebugMoveToChunk(newChunkGrainMock.Object))
             .Verifiable(Times.Once);
 
         // Player registry mock
@@ -89,39 +58,15 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
             .ReturnsAsync(playerGrainMock.Object)
             .Verifiable(Times.Once);
-        playerRegistryMock.Verify(
-            x => x.AddPlayer(It.IsAny<string>(), It.IsAny<Guid>()),
-            Times.Never);
 
         // Act
-        await _realtimeUpdatesHubClient.RegisterPlayerGrain(PlayerName);
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
 
         // Assert
         _orleansClientMock.Verify();
+        newChunkGrainMock.Verify();
         playerRegistryMock.Verify();
         playerGrainMock.Verify();
-    }
-
-    [Fact]
-    public async Task GetCurrentChunkId_ShouldReturnNull_WhenPlayerMissing() {
-        // Arrange
-
-        // Player registry mock
-        var playerRegistryMock = new Mock<IPlayerRegistry>();
-        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
-            .Returns(playerRegistryMock.Object)
-            .Verifiable(Times.Once);
-        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
-            .ReturnsAsync((IPlayerGrain?)null)
-            .Verifiable(Times.Once);
-
-        // Act
-        var result = await _realtimeUpdatesHubClient.GetCurrentChunk(PlayerName);
-
-        // Assert
-        Assert.Null(result);
-        _orleansClientMock.Verify();
-        playerRegistryMock.Verify();
     }
 
     [Fact]
@@ -170,14 +115,8 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
     }
 
     [Fact]
-    public async Task MoveToChunk_ShouldNoOp_WhenPlayerMissing() {
+    public async Task GetCurrentChunkId_ShouldReturnNull_WhenPlayerMissing() {
         // Arrange
-        int newChunkId = 2;
-
-        // Player grain mock
-        _orleansClientMock.Verify(
-            x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null),
-            Times.Never);
 
         // Player registry mock
         var playerRegistryMock = new Mock<IPlayerRegistry>();
@@ -189,46 +128,12 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
+        var result = await _realtimeUpdatesHubClient.GetCurrentChunk(PlayerName);
 
         // Assert
+        Assert.Null(result);
         _orleansClientMock.Verify();
         playerRegistryMock.Verify();
-    }
-
-    [Fact]
-    public async Task DebugMoveToChunk_ShouldEnter_WhenPlayerFound() {
-        // Arrange
-        int newChunkId = 2;
-
-        // Chunk grain mock
-        var newChunkGrainMock = new Mock<IWorldChunkGrain>();
-        _orleansClientMock.Setup(x => x.GetGrain<IWorldChunkGrain>(newChunkId, null))
-            .Returns(newChunkGrainMock.Object)
-            .Verifiable(Times.Once);
-
-        // Player grain mock
-        var playerGrainMock = new Mock<IPlayerGrain>();
-        playerGrainMock.Setup(x => x.DebugMoveToChunk(newChunkGrainMock.Object))
-            .Verifiable(Times.Once);
-
-        // Player registry mock
-        var playerRegistryMock = new Mock<IPlayerRegistry>();
-        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
-            .Returns(playerRegistryMock.Object)
-            .Verifiable(Times.Once);
-        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
-            .ReturnsAsync(playerGrainMock.Object)
-            .Verifiable(Times.Once);
-
-        // Act
-        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
-
-        // Assert
-        _orleansClientMock.Verify();
-        newChunkGrainMock.Verify();
-        playerRegistryMock.Verify();
-        playerGrainMock.Verify();
     }
 
     [Fact]
@@ -250,7 +155,7 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         // Assert
         Assert.Empty(result);
     }
-    
+
     [Fact]
     public async Task GetPlayersInCurrentChunk_ShouldReturnPlayersInChunk_WhenPlayerFound() {
         // Arrange
@@ -337,5 +242,165 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             x => Assert.Equivalent(x, result[0]),
             x => Assert.Equivalent(x, result[1])
         );
+    }
+
+    [Fact]
+    public async Task GetVisibleChunks_ShouldReturnEmptyVisibleWorldChunksMessageIfPlayerNotFound() {
+        // Arrange
+        int radius = 10;
+        Mock<IPlayerRegistry> playerRegistryMock = new();
+        Mock<IPlayerGrain> playerGrainMock = new();
+        Mock<IWorldChunkGrain> chunkGrainMock = new();
+
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .Returns(Task.FromResult<IPlayerGrain?>(null));
+
+        // Act
+        VisibleWorldChunksMessage message = await _realtimeUpdatesHubClient.GetVisibleChunks(PlayerName, radius);
+
+        // Assert
+        Assert.Empty(message.Chunks);
+
+        _orleansClientMock.Verify();
+        playerRegistryMock.Verify();
+        playerGrainMock.Verify();
+        chunkGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksMessage() {
+        // Arrange
+        int radius = 10;
+        VisibleWorldChunk[] expectedWorldChunks = new[] {
+            new VisibleWorldChunk(0L, new WorldChunkGrainPosition(0, 0)),
+            new VisibleWorldChunk(1L, new WorldChunkGrainPosition(0, 1)),
+            new VisibleWorldChunk(2L, new WorldChunkGrainPosition(0, 2)),
+            new VisibleWorldChunk(3L, new WorldChunkGrainPosition(0, 3)),
+        };
+        Mock<IPlayerRegistry> playerRegistryMock = new();
+        Mock<IPlayerGrain> playerGrainMock = new();
+        Mock<IWorldChunkGrain> chunkGrainMock = new();
+
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .Returns(Task.FromResult<IPlayerGrain?>(playerGrainMock.Object));
+        playerGrainMock.Setup(x => x.GetCurrentChunk())
+            .Returns(Task.FromResult(chunkGrainMock.Object));
+        chunkGrainMock.Setup(x => x.GetVisibleChunks(radius))
+            .Returns(Task.FromResult(expectedWorldChunks));
+
+        // Act
+        VisibleWorldChunksMessage message = await _realtimeUpdatesHubClient.GetVisibleChunks(PlayerName, radius);
+
+        // Assert
+        for (int i = 0; i < message.Chunks.Length; i++) {
+            Assert.IsType<WorldChunkContract>(message.Chunks[i]);
+            Assert.Equal(message.Chunks[i].ChunkId, expectedWorldChunks[i].Id);
+            Assert.Equal(message.Chunks[i].X, expectedWorldChunks[i].Position.X);
+            Assert.Equal(message.Chunks[i].Y, expectedWorldChunks[i].Position.Y);
+        }
+
+        _orleansClientMock.Verify();
+        playerRegistryMock.Verify();
+        playerGrainMock.Verify();
+        chunkGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task MoveToChunk_ShouldNoOp_WhenPlayerMissing() {
+        // Arrange
+        int newChunkId = 2;
+
+        // Player grain mock
+        _orleansClientMock.Verify(
+            x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null),
+            Times.Never);
+
+        // Player registry mock
+        var playerRegistryMock = new Mock<IPlayerRegistry>();
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object)
+            .Verifiable(Times.Once);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .ReturnsAsync((IPlayerGrain?)null)
+            .Verifiable(Times.Once);
+
+        // Act
+        await _realtimeUpdatesHubClient.DebugMoveToChunk(PlayerName, newChunkId);
+
+        // Assert
+        _orleansClientMock.Verify();
+        playerRegistryMock.Verify();
+    }
+
+    [Fact]
+    public async Task RegisterPlayerGrain_ShouldCreateNew_WhenNotFound() {
+        // Arrange
+
+        // Player registry mock
+        var playerRegistryMock = new Mock<IPlayerRegistry>();
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object)
+            .Verifiable(Times.Exactly(2));
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .ReturnsAsync((IPlayerGrain?)null)
+            .Verifiable(Times.Once);
+        playerRegistryMock.Setup(x => x.AddPlayer(PlayerName, It.IsAny<Guid>()))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+
+        // Player grain mock
+        var playerGrainMock = new Mock<IPlayerGrain>();
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null))
+            .Returns(playerGrainMock.Object)
+            .Verifiable(Times.Once);
+        playerGrainMock.Setup(x => x.Initialize(ConnectionId, PlayerName))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+
+        // Act
+        await _realtimeUpdatesHubClient.RegisterPlayerGrain(PlayerName);
+
+        // Assert
+        _orleansClientMock.Verify();
+        playerRegistryMock.Verify();
+        playerGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task RegisterPlayerGrain_ShouldUseExisting_WhenFound() {
+        // Arrange
+
+        // Player grain mock
+        var playerGrainMock = new Mock<IPlayerGrain>();
+        _orleansClientMock.Verify(
+            x => x.GetGrain<IPlayerGrain>(It.IsAny<Guid>(), null),
+            Times.Never);
+        playerGrainMock.Setup(x => x.Initialize(ConnectionId, PlayerName))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+
+        // Player registry mock
+        var playerRegistryMock = new Mock<IPlayerRegistry>();
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object)
+            .Verifiable(Times.Once);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .ReturnsAsync(playerGrainMock.Object)
+            .Verifiable(Times.Once);
+        playerRegistryMock.Verify(
+            x => x.AddPlayer(It.IsAny<string>(), It.IsAny<Guid>()),
+            Times.Never);
+
+        // Act
+        await _realtimeUpdatesHubClient.RegisterPlayerGrain(PlayerName);
+
+        // Assert
+        _orleansClientMock.Verify();
+        playerRegistryMock.Verify();
+        playerGrainMock.Verify();
     }
 }
