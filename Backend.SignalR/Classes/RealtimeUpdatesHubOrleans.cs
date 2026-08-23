@@ -14,10 +14,14 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
         _realtimeUpdatesHubClientContext = realtimeUpdatesHubClientContext;
     }
 
-    public async Task PlayerMovementUpdate(string groupName, string playerId, int posX, int posY) {
-        Logger.LogDebug($"PlayerMovementUpdate received: {groupName}, {playerId}, ({posX},{posY})");
+    public async Task PlayerNewPathCreated(
+        string groupName,
+        string playerId,
+        int[][] path
+    ) {
+        Logger.LogDebug($"PlayerNewPathCreated received: {groupName}, {playerId}, {path})");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerMovementUpdate(playerId, posX, posY);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerNewPathCreated(playerId, path);
     }
 
     public async Task PlayerAddedToChunk(
@@ -26,27 +30,39 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
         string playerName,
         long chunkId,
         int posX,
-        int posY
+        int posY,
+        int[][] path
     ) {
-        Logger.LogDebug($"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}, {chunkId}, ({posX},{posY})");
+        Logger.LogDebug(
+            $"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}, {chunkId}, ({posX},{posY}), {path}");
 
         await _realtimeUpdatesHubClientContext.Clients.Group(groupName)
-            .PlayerAddedToChunk(playerId, playerName, chunkId, posX, posY);
+            .PlayerAddedToChunk(playerId, playerName, chunkId, posX, posY, path);
     }
 
-    public async Task PlayerRemovedFromChunk(string groupName, string playerId, long chunkId) {
+    public async Task PlayerRemovedFromChunk(
+        string groupName,
+        string playerId,
+        long chunkId
+    ) {
         Logger.LogDebug($"PlayerRemovedFromChunk received: {groupName}, {playerId}");
 
         await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerRemovedFromChunk(playerId, chunkId);
     }
 
-    public async Task AddToGroupAsync(string groupName, string connectionId) {
+    public async Task AddToGroupAsync(
+        string groupName,
+        string connectionId
+    ) {
         Logger.LogDebug($"AddToGroupAsync received: {groupName}, {connectionId}");
 
         await _realtimeUpdatesHubClientContext.Groups.AddToGroupAsync(connectionId, groupName);
     }
 
-    public async Task RemoveFromGroupAsync(string groupName, string connectionId) {
+    public async Task RemoveFromGroupAsync(
+        string groupName,
+        string connectionId
+    ) {
         Logger.LogDebug($"RemoveFromGroupAsync received: {groupName}, {connectionId}");
 
         await _realtimeUpdatesHubClientContext.Groups.RemoveFromGroupAsync(connectionId, groupName);

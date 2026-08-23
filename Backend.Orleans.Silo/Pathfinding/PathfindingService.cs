@@ -13,8 +13,8 @@ public class PathfindingService : IPathfindingService {
 
     public PathfindingService() {
         GridSize gridSize = new(
-            columns: WorldChunkGrain.WorldSizeX * WorldChunkGrain.SizeY, 
-            rows: WorldChunkGrain.WorldSizeY * WorldChunkGrain.SizeX
+            columns: IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.SizeX, 
+            rows: IWorldChunkGrain.WorldSizeY * IWorldChunkGrain.SizeY
         );
         Size cellSize = new(Distance.FromMeters(1), Distance.FromMeters(1));
         Velocity traversalVelocity = Velocity.FromMetersPerSecond(1F); // This is not really used for our use case

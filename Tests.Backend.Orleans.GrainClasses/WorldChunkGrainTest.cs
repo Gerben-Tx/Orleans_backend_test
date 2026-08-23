@@ -11,6 +11,57 @@ namespace Tests.Backend.Orleans.GrainClasses;
 
 [TestSubject(typeof(WorldChunkGrain))]
 public class WorldChunkGrainTest : TestKitBase {
+    [Theory]
+    [InlineData(0, 0, 0)] // Top left corner
+    [InlineData(IWorldChunkGrain.WorldSizeX, 0, 1)] // First one, second row
+    [InlineData(IWorldChunkGrain.WorldSizeX - 1, 9, 0)] // Top right corner
+    [InlineData(
+        (IWorldChunkGrain.WorldSizeX - 1) * IWorldChunkGrain.WorldSizeY,
+        0,
+        IWorldChunkGrain.WorldSizeY - 1)] // Bottom left corner
+    [InlineData(
+        IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.WorldSizeY - 1,
+        IWorldChunkGrain.WorldSizeX - 1,
+        IWorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
+    public async Task GetPositionByChunkId_ShouldReturnCorrectPosition(
+        long chunkId,
+        int expectedX,
+        int expectedY
+    ) {
+        // Arrange
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        WorldChunkGrainPosition? position = await grain.GetPositionByChunkId(chunkId);
+
+        // Assert
+        Assert.Equal($"{expectedX},{expectedY}", $"{position?.X},{position?.Y}");
+    }
+
+    [Theory]
+    [InlineData(1, 0L, 4)] // Top left corner (0,0)
+    [InlineData(1, 1L, 6)] // Top lef corner + 1 (1,0)
+    [InlineData(1, 0L + IWorldChunkGrain.WorldSizeX, 6)] // Second row, left (0,1) 
+    [InlineData(1, 1L + IWorldChunkGrain.WorldSizeX, 9)] // Second row, left + 1  (1,1)
+    [InlineData(2, 0L, 9)] // Top left corner (0,0)
+    [InlineData(2, 1L, 12)] // Top lef corner + 1 (1,0)
+    [InlineData(2, 0L + IWorldChunkGrain.WorldSizeX, 12)] // Second row, left (0,1) 
+    [InlineData(2, 1L + IWorldChunkGrain.WorldSizeX, 16)] // Second row, left + 1  (1,1)
+    public async Task GetVisibleChunks_ShouldReturnCorrectChunks(
+        int radius,
+        long chunkId,
+        int expectedVisibleChunks
+    ) {
+        // Arrange
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+
+        // Act
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunks(radius);
+
+        // Assert
+        Assert.Equal(expectedVisibleChunks, visibleChunks.Length);
+    }
+
     [Fact]
     public async Task AddPlayer_ShouldNotifyRealtimeUpdatesAndAvoidDuplicates() {
         // Arrange
@@ -19,11 +70,26 @@ public class WorldChunkGrainTest : TestKitBase {
         string playerKey = Guid.NewGuid().ToString();
         string playerName = "Player One";
         SerializableVector2 position = new SerializableVector2(1, 2);
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>(
+        [
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
+        int[][] path = pathQueue.ToList().ConvertAll<int[]>(x => [x.X, x.Y]).ToArray();
 
         // Mock realtime updates service
         Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
         realtimeUpdatesMock
-            .Setup(x => x.PlayerAddedToChunk(groupName, playerKey, playerName, chunkId, position.X, position.Y))
+            .Setup(x => x.PlayerAddedToChunk(
+                groupName,
+                playerKey,
+                playerName,
+                chunkId,
+                position.X,
+                position.Y,
+                It.Is<int[][]>(realPath =>
+                    realPath.Zip(path).All(pair => pair.First.SequenceEqual(pair.Second)))
+            ))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
 
@@ -31,43 +97,72 @@ public class WorldChunkGrainTest : TestKitBase {
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
-        await grain.AddPlayer(playerKey, playerName, position);
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
         // Duplicate add should be ignored
-        await grain.AddPlayer(playerKey, playerName, position);
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
 
         // Assert
         realtimeUpdatesMock.Verify();
     }
 
     [Fact]
-    public async Task RemovePlayer_ShouldNotifyWhenPresentAndIgnoreWhenAbsent() {
+    public async Task GetAllPlayers_ShouldReturnGrainRefsForStoredPlayerKeys() {
         // Arrange
-        long chunkId = 7L;
-        string groupName = chunkId.ToString();
-        string playerKey = Guid.NewGuid().ToString();
-        string playerName = "Player Two";
-        SerializableVector2 position = new SerializableVector2(3, 4);
-
-        Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
+        long chunkId = 9L;
+        var realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>(
+        [
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
+        // No need to verify add notifications here
         realtimeUpdatesMock
-            .Setup(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId))
+            .Setup(x => x.PlayerAddedToChunk(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                chunkId,
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<int[][]>()))
             .Returns(Task.CompletedTask);
+
+        Guid p1 = Guid.NewGuid();
+        Guid p2 = Guid.NewGuid();
+        string k1 = p1.ToString();
+        string k2 = p2.ToString();
+
+        // Mock player grains
+        Mock<IPlayerGrain> player1Mock = Silo.AddProbe<IPlayerGrain>(p1);
+        Mock<IPlayerGrain> player2Mock = Silo.AddProbe<IPlayerGrain>(p2);
 
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
-        // Act & Assert
-        // Removing an absent player should do nothing
-        await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(It.IsAny<string>(), It.IsAny<string>(), chunkId), Times.Never);
+        // Add two players
+        await grain.AddPlayer(k1, "Alice", new SerializableVector2(10, 20), pathQueue);
+        await grain.AddPlayer(k2, "Bob", new SerializableVector2(30, 40), pathQueue);
 
-        // Add then remove -> should notify once
-        await grain.AddPlayer(playerKey, playerName, position);
-        await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
+        // Act
+        List<IPlayerGrain> players = await grain.GetAllPlayers();
 
-        // Removing again should still be ignored
-        await grain.RemovePlayer(playerKey, playerName);
-        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
+        // Assert
+        Assert.Equal(2, players.Count);
+        Assert.Contains(player1Mock.Object, players);
+        Assert.Contains(player2Mock.Object, players);
+    }
+
+    [Fact]
+    public async Task GetPosition_ShouldReturnCorrectPosition() {
+        // Arrange
+        WorldChunkGrainPosition expectedPosition = new(1, 0); // Chunk id 1 has position (1,0)
+
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(1L);
+
+        // Act
+        WorldChunkGrainPosition? chunkGrainPosition = await grain.GetPosition();
+
+        // Assert
+        Assert.Equal(expectedPosition, chunkGrainPosition);
     }
 
     [Fact]
@@ -84,76 +179,42 @@ public class WorldChunkGrainTest : TestKitBase {
     }
 
     [Fact]
-    public async Task GetAllPlayers_ShouldReturnGrainRefsForStoredPlayerKeys() {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsBottomRight() {
         // Arrange
-        long chunkId = 9L;
-        var realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
-        // No need to verify add notifications here
-        realtimeUpdatesMock
-            .Setup(x => x.PlayerAddedToChunk(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                chunkId,
-                It.IsAny<int>(),
-                It.IsAny<int>()))
-            .Returns(Task.CompletedTask);
-
-        Guid p1 = Guid.NewGuid();
-        Guid p2 = Guid.NewGuid();
-        string k1 = p1.ToString();
-        string k2 = p2.ToString();
-
-        // Mock player grains
-        Mock<IPlayerGrain> player1Mock = Silo.AddProbe<IPlayerGrain>(p1);
-        Mock<IPlayerGrain> player2Mock = Silo.AddProbe<IPlayerGrain>(p2);
-
+        long chunkId = IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.WorldSizeY - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
-        // Add two players
-        await grain.AddPlayer(k1, "Alice", new SerializableVector2(10, 20));
-        await grain.AddPlayer(k2, "Bob", new SerializableVector2(30, 40));
-
         // Act
-        List<IPlayerGrain> players = await grain.GetAllPlayers();
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal(2, players.Count);
-        Assert.Contains(player1Mock.Object, players);
-        Assert.Contains(player2Mock.Object, players);
+        Assert.Equal(4, visibleChunks.Length);
+        Assert.Equal(chunkId - IWorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId, visibleChunks[1].Id); // Center
+        Assert.Equal(chunkId - 1, visibleChunks[2].Id); // West
+        Assert.Equal(chunkId - 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // NorthWest
     }
 
     [Fact]
-    public void SizeConstants_ShouldBe30() {
-        Assert.Equal(30, WorldChunkGrain.SizeX);
-        Assert.Equal(30, WorldChunkGrain.SizeY);
-    }
-
-    [Theory]
-    [InlineData(0, 0, 0)] // Top left corner
-    [InlineData(WorldChunkGrain.WorldSizeX, 0, 1)] // First one, second row
-    [InlineData(WorldChunkGrain.WorldSizeX - 1, 9, 0)] // Top right corner
-    [InlineData(
-        (WorldChunkGrain.WorldSizeX - 1) * WorldChunkGrain.WorldSizeY,
-        0,
-        WorldChunkGrain.WorldSizeY - 1)] // Bottom left corner
-    [InlineData(
-        WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1,
-        WorldChunkGrain.WorldSizeX - 1,
-        WorldChunkGrain.WorldSizeY - 1)] // Bottom right corner
-    public async Task GetPositionByChunkId_ShouldReturnCorrectPosition(
-        long chunkId,
-        int expectedX,
-        int expectedY
-    ) {
+    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsCenter() {
         // Arrange
+        long chunkId = (IWorldChunkGrain.WorldSizeX / 2) * (IWorldChunkGrain.WorldSizeY / 2);
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
-        
+
         // Act
-        WorldChunkGrainPosition? position = await grain.GetPositionByChunkId(chunkId);
+        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
 
         // Assert
-        Assert.Equal($"{expectedX},{expectedY}", $"{position?.X},{position?.Y}");
+        Assert.Equal(9, visibleChunks.Length);
+        Assert.Equal(chunkId - IWorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
+        Assert.Equal(chunkId + 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // NorthEast
+        Assert.Equal(chunkId + 1, visibleChunks[2].Id); // East
+        Assert.Equal(chunkId, visibleChunks[3].Id); // Center
+        Assert.Equal(chunkId + 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[4].Id); // SouthEast
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[5].Id); // South
+        Assert.Equal(chunkId - 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[6].Id); // SouthWest
+        Assert.Equal(chunkId - 1, visibleChunks[7].Id); // West
+        Assert.Equal(chunkId - 1 - IWorldChunkGrain.WorldSizeX, visibleChunks[8].Id); // NorthWest
     }
 
     [Fact]
@@ -170,14 +231,14 @@ public class WorldChunkGrainTest : TestKitBase {
         Assert.Equal(4, visibleChunks.Length);
         Assert.Equal(chunkId + 1, visibleChunks[0].Id); // East
         Assert.Equal(chunkId, visibleChunks[1].Id); // Center
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // South
+        Assert.Equal(chunkId + 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthEast
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // South
     }
 
     [Fact]
     public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsTopRight() {
         // Arrange
-        long chunkId = WorldChunkGrain.WorldSizeX - 1;
+        long chunkId = IWorldChunkGrain.WorldSizeX - 1;
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
         // Act
@@ -186,47 +247,73 @@ public class WorldChunkGrainTest : TestKitBase {
         // Assert
         Assert.Equal(4, visibleChunks.Length);
         Assert.Equal(chunkId, visibleChunks[0].Id); // Center
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthWest
+        Assert.Equal(chunkId + IWorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // South
+        Assert.Equal(chunkId - 1 + IWorldChunkGrain.WorldSizeX, visibleChunks[2].Id); // SouthWest
         Assert.Equal(chunkId - 1, visibleChunks[3].Id); // West
     }
 
     [Fact]
-    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsBottomRight() {
+    public async Task IsPlayerInChunk_ShouldReturnTrueWhenPlayerIsInChunk() {
         // Arrange
-        long chunkId = WorldChunkGrain.WorldSizeX * WorldChunkGrain.WorldSizeY - 1;
-        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
+        Guid playerId = Guid.NewGuid();
+        WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(0L);
+
+        await grain.AddPlayer(
+            playerId.ToString(),
+            "Player One",
+            new SerializableVector2(1, 2),
+            new Queue<SerializableVector2>());
 
         // Act
-        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
+        bool result = await grain.IsPlayerInChunk(playerId.ToString());
+        bool result2 = await grain.IsPlayerInChunk(Guid.NewGuid().ToString());
 
         // Assert
-        Assert.Equal(4, visibleChunks.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
-        Assert.Equal(chunkId, visibleChunks[1].Id); // Center
-        Assert.Equal(chunkId - 1, visibleChunks[2].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[3].Id); // NorthWest
+        Assert.True(result);
+        Assert.False(result2);
     }
 
     [Fact]
-    public async Task GetVisibleChunks_ShouldReturnVisibleWorldChunksWhenChunkIsCenter() {
+    public async Task RemovePlayer_ShouldNotifyWhenPresentAndIgnoreWhenAbsent() {
         // Arrange
-        long chunkId = (WorldChunkGrain.WorldSizeX / 2) * (WorldChunkGrain.WorldSizeY / 2);
+        long chunkId = 7L;
+        string groupName = chunkId.ToString();
+        string playerKey = Guid.NewGuid().ToString();
+        string playerName = "Player Two";
+        SerializableVector2 position = new SerializableVector2(3, 4);
+        Queue<SerializableVector2> pathQueue = new Queue<SerializableVector2>(
+        [
+            new SerializableVector2(1, 2),
+            new SerializableVector2(3, 4),
+        ]);
+
+        Mock<IRealtimeUpdatesOrleans> realtimeUpdatesMock = Silo.AddServiceProbe<IRealtimeUpdatesOrleans>();
+        realtimeUpdatesMock
+            .Setup(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId))
+            .Returns(Task.CompletedTask);
+
         WorldChunkGrain grain = await Silo.CreateGrainAsync<WorldChunkGrain>(chunkId);
 
-        // Act
-        VisibleWorldChunk[] visibleChunks = await grain.GetVisibleChunksById();
+        // Act & Assert
+        // Removing an absent player should do nothing
+        await grain.RemovePlayer(playerKey, playerName);
+        realtimeUpdatesMock.Verify(
+            x => x.PlayerRemovedFromChunk(It.IsAny<string>(), It.IsAny<string>(), chunkId),
+            Times.Never);
 
-        // Assert
-        Assert.Equal(9, visibleChunks.Length);
-        Assert.Equal(chunkId - WorldChunkGrain.WorldSizeX, visibleChunks[0].Id); // North
-        Assert.Equal(chunkId + 1 - WorldChunkGrain.WorldSizeX, visibleChunks[1].Id); // NorthEast
-        Assert.Equal(chunkId + 1, visibleChunks[2].Id); // East
-        Assert.Equal(chunkId, visibleChunks[3].Id); // Center
-        Assert.Equal(chunkId + 1 + WorldChunkGrain.WorldSizeX, visibleChunks[4].Id); // SouthEast
-        Assert.Equal(chunkId + WorldChunkGrain.WorldSizeX, visibleChunks[5].Id); // South
-        Assert.Equal(chunkId - 1 + WorldChunkGrain.WorldSizeX, visibleChunks[6].Id); // SouthWest
-        Assert.Equal(chunkId - 1, visibleChunks[7].Id); // West
-        Assert.Equal(chunkId - 1 - WorldChunkGrain.WorldSizeX, visibleChunks[8].Id); // NorthWest
+        // Add then remove -> should notify once
+        await grain.AddPlayer(playerKey, playerName, position, pathQueue);
+        await grain.RemovePlayer(playerKey, playerName);
+        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
+
+        // Removing again should still be ignored
+        await grain.RemovePlayer(playerKey, playerName);
+        realtimeUpdatesMock.Verify(x => x.PlayerRemovedFromChunk(groupName, playerKey, chunkId), Times.Once);
+    }
+
+    [Fact]
+    public void SizeConstants_ShouldBe30() {
+        Assert.Equal(30, IWorldChunkGrain.SizeX);
+        Assert.Equal(30, IWorldChunkGrain.SizeY);
     }
 }

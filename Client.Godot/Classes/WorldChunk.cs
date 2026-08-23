@@ -7,6 +7,7 @@ public class WorldChunk {
     public readonly int X;
     public readonly int Y;
     public readonly HashSet<string> PlayerIds;
+    public readonly List<Tile> Tiles = [];
 
     private WorldChunk(long chunkId, int x, int y, HashSet<string> playerIds) {
         ChunkId = chunkId;

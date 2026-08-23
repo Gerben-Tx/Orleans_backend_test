@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
@@ -108,7 +109,8 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (chunkId == await currentChunk.GetKey()) {
             playersInChunk = await currentChunk.GetAllPlayers();
         } else {
-            VisibleWorldChunk[] visibleChunks = await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
+            VisibleWorldChunk[] visibleChunks =
+                await currentChunk.GetVisibleChunks(await playerGrain.GetChunkVisibilityRadius());
             VisibleWorldChunk? matchingVisibleChunk =
                 visibleChunks.ToArray().FirstOrDefault(visibleChunk => visibleChunk?.Id == chunkId);
 
@@ -147,6 +149,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         if (playerGrain == null) {
             return new VisibleWorldChunksMessage([]);
         }
+
         playerGrain.SetChunkVisibilityRadius(radius);
 
         IWorldChunkGrain currentChunkGrain = await playerGrain.GetCurrentChunk();
@@ -154,10 +157,54 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
 
         return new VisibleWorldChunksMessage(
             visibleWorldChunks.Select(visibleWorldChunk =>
-                    new WorldChunkContract(visibleWorldChunk.Id, visibleWorldChunk.Position.X, visibleWorldChunk.Position.Y)
+                    new WorldChunkContract(
+                        visibleWorldChunk.Id,
+                        visibleWorldChunk.Position.X,
+                        visibleWorldChunk.Position.Y)
                 )
                 .ToArray()
         );
+    }
+
+    public async Task<WorldInfoMessage> GetWorldInfo() {
+        ITickGrain tickGrain = OrleansClient.GetGrain<ITickGrain>(ITickGrain.Key);
+
+        return new WorldInfoMessage(
+            IWorldChunkGrain.WorldSizeX,
+            IWorldChunkGrain.WorldSizeY,
+            IWorldChunkGrain.SizeX,
+            IWorldChunkGrain.SizeY,
+            await tickGrain.GetTicks(),
+            await tickGrain.GetTicksPerSecond()
+        );
+    }
+
+    public async Task SendMovementIntent(
+        string playerName,
+        int destinationX,
+        int destinationY,
+        ulong tick
+    ) {
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return;
+        }
+
+        await playerGrain.ReceiveMovementIntent(destinationX, destinationY, tick);
+    }
+
+    [ExcludeFromCodeCoverage(Justification = "Only used for debugging")]
+    public async Task<PlayerPositionMessage?> DebugGetPlayerPosition(
+        string playerName
+    ) {
+        IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
+        if (playerGrain == null) {
+            return null;
+        }
+
+        SerializableVector2 position = await playerGrain.GetPosition();
+
+        return new PlayerPositionMessage() { X = position.X, Y = position.Y };
     }
 
     private async Task<IPlayerGrain?> FindPlayerInRegistry(
