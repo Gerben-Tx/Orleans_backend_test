@@ -298,15 +298,41 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         // Assert
         for (int i = 0; i < message.Chunks.Length; i++) {
             Assert.IsType<WorldChunkContract>(message.Chunks[i]);
-            Assert.Equal(message.Chunks[i].ChunkId, expectedWorldChunks[i].Id);
-            Assert.Equal(message.Chunks[i].X, expectedWorldChunks[i].Position.X);
-            Assert.Equal(message.Chunks[i].Y, expectedWorldChunks[i].Position.Y);
+            Assert.Equal(expectedWorldChunks[i].Id, message.Chunks[i].ChunkId);
+            Assert.Equal(expectedWorldChunks[i].Position.X, message.Chunks[i].X);
+            Assert.Equal(expectedWorldChunks[i].Position.Y, message.Chunks[i].Y);
         }
 
         _orleansClientMock.Verify();
         playerRegistryMock.Verify();
         playerGrainMock.Verify();
         chunkGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task GetWorldInfo_ShouldReturnWorldInfoMessage() {
+        // Arrange
+        ulong ticks = 1000;
+        uint ticksPerSecond = 100;
+
+        Mock<ITickGrain> tickGrainMock = new();
+        _orleansClientMock.Setup(x => x.GetGrain<ITickGrain>(ITickGrain.Key, null))
+            .Returns(tickGrainMock.Object);
+        tickGrainMock.Setup(x => x.GetTicks())
+            .Returns(Task.FromResult(ticks));
+        tickGrainMock.Setup(x => x.GetTicksPerSecond())
+            .Returns(Task.FromResult(ticksPerSecond));
+
+        // Act
+        WorldInfoMessage message = await _realtimeUpdatesHubClient.GetWorldInfo();
+
+        // Assert
+        Assert.Equal(IWorldChunkGrain.WorldSizeX, message.WorldSizeX);
+        Assert.Equal(IWorldChunkGrain.WorldSizeY, message.WorldSizeY);
+        Assert.Equal(IWorldChunkGrain.SizeX, message.ChunkSizeX);
+        Assert.Equal(IWorldChunkGrain.SizeY, message.ChunkSizeY);
+        Assert.Equal(ticks, message.CurrentTick);
+        Assert.Equal(ticksPerSecond, message.TicksPerSecond);
     }
 
     [Fact]
