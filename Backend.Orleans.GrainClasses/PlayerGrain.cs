@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
@@ -157,6 +158,7 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         _chunkVisibileRadius = radius;
     }
 
+    [ExcludeFromCodeCoverage(Justification = "This is just for debugging purposes")]
     public async Task DebugMoveToChunk(
         IWorldChunkGrain chunkGrain
     ) {

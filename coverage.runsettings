@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+    <DataCollectionRunSettings>
+        <DataCollectors>
+            <DataCollector friendlyName="XPlat Code Coverage">
+                <Configuration>
+                    <ExcludeByAttribute>ExcludeFromCodeCoverage</ExcludeByAttribute>
+                    <Format>cobertura</Format>
+                    <CodeCoverage>
+                        <Attributes>
+                            <Exclude>
+                                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$
+                                </Attribute>
+                            </Exclude>
+                        </Attributes>
+                    </CodeCoverage>
+                </Configuration>
+            </DataCollector>
+        </DataCollectors>
+    </DataCollectionRunSettings>
+</RunSettings>
