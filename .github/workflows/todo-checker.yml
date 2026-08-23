@@ -10,10 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Simple TODO Checker
-        uses: damienjburks/simple-todo-checker@1.0.0
+  
+      - name: Check for Todos
+        uses: phntmxyz/pr_todo_checker@v1
         with:
-          path: "." # Scan default folder as this is required.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          exclude: |
+            *.md
+            **/addons/*
+          comment_on_todo: true
+          comment_body: |
+            ":warning: Please review the TODOs in the PR and make sure they are resolved.\n\nIf you want to ignore this TODO, resolve this conversation."
+          enable_ignore_checkbox: false # Use GitHub's native "Resolve conversation" (recommended)
