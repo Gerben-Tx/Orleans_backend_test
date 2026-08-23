@@ -26,5 +26,5 @@ jobs:
             **/addons/*
           comment_on_todo: true
           comment_body: |
-            ":warning: Please review the TODOs in the PR and make sure they are resolved.\n\nIf you want to ignore this TODO, resolve this conversation."
+            :warning: Please review the TODOs in the PR and make sure they are resolved.\n\nIf you want to ignore this TODO, resolve this conversation.
           enable_ignore_checkbox: false # Use GitHub's native "Resolve conversation" (recommended)
