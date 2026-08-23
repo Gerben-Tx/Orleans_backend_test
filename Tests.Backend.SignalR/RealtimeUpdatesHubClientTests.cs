@@ -157,7 +157,8 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
     }
 
     [Fact]
-    public async Task GetPlayersInCurrentChunk_ShouldReturnPlayersInChunk_WhenPlayerFound() {
+    public async Task
+        GetPlayersInCurrentChunk_ShouldReturnPlayersInCurrentChunk_WhenPlayerFoundAndChunkIdIsCurrentChunkId() {
         // Arrange
         var chunkId = 1L;
         var player1 = new Mock<IPlayerGrain>();
@@ -202,6 +203,118 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         var playerGrainMock = new Mock<IPlayerGrain>();
         playerGrainMock.Setup(x => x.GetCurrentChunk())
             .Returns(Task.FromResult(currentChunkGrainMock.Object))
+            .Verifiable(Times.Once);
+
+        // Player registry mock
+        var playerRegistryMock = new Mock<IPlayerRegistry>();
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object)
+            .Verifiable(Times.Once);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .ReturnsAsync(playerGrainMock.Object)
+            .Verifiable(Times.Once);
+
+        // Players in chunk mock
+        player1.Setup(x => x.GetPosition())
+            .Returns(Task.FromResult(player1Position))
+            .Verifiable(Times.Once);
+        player1.Setup(x => x.GetName())
+            .Returns(Task.FromResult(player1Name))
+            .Verifiable(Times.Once);
+        player1.Setup(x => x.GetKey())
+            .Returns(Task.FromResult(player1Key))
+            .Verifiable(Times.Once);
+        player2.Setup(x => x.GetPosition())
+            .Returns(Task.FromResult(player2Position))
+            .Verifiable(Times.Once);
+        player2.Setup(x => x.GetName())
+            .Returns(Task.FromResult(player2Name))
+            .Verifiable(Times.Once);
+        player2.Setup(x => x.GetKey())
+            .Returns(Task.FromResult(player2Key))
+            .Verifiable(Times.Once);
+
+        // Act
+        var result = await _realtimeUpdatesHubClient.GetPlayersInChunk(PlayerName, chunkId);
+
+        // Assert
+        Assert.Collection(
+            expectedMessages,
+            x => Assert.Equivalent(x, result[0]),
+            x => Assert.Equivalent(x, result[1])
+        );
+    }
+
+    [Fact]
+    public async Task
+        GetPlayersInCurrentChunk_ShouldReturnPlayersInMatchingVisibleChunk_WhenPlayerFoundAndChunkIdIsNotCurrentChunkId() {
+        // Arrange
+        var chunkId = 1L;
+        var player1 = new Mock<IPlayerGrain>();
+        var player2 = new Mock<IPlayerGrain>();
+        var player1Position = new SerializableVector2(100, 200);
+        var player2Position = new SerializableVector2(105, 205);
+        var player1Name = "Player 1";
+        var player2Name = "Player 2";
+        var player1Key = "Player 1 key";
+        var player2Key = "Player 2 key";
+        var playersInChunk = new List<IPlayerGrain>();
+        playersInChunk.Add(player1.Object);
+        playersInChunk.Add(player2.Object);
+        var expectedMessages = new List<PlayerListMessage> {
+            new() {
+                Id = player1Key,
+                Name = player1Name,
+                PositionX = player1Position.X,
+                PositionY = player1Position.Y
+            },
+            new() {
+                Id = player2Key,
+                Name = player2Name,
+                PositionX = player2Position.X,
+                PositionY = player2Position.Y
+            }
+        };
+        int radius = 10;
+        VisibleWorldChunk[] visibleWorldChunks = new[] {
+            new VisibleWorldChunk(chunkId - 1, new WorldChunkGrainPosition(0, 0)),
+            new VisibleWorldChunk(chunkId, new WorldChunkGrainPosition(0, 1)),
+            new VisibleWorldChunk(chunkId + 1, new WorldChunkGrainPosition(0, 2)),
+            new VisibleWorldChunk(chunkId + 2, new WorldChunkGrainPosition(0, 3)),
+        };
+        Mock<IWorldChunkGrain> visibleWorldChunkMock = new();
+
+        // Chunk grain mock
+        var currentChunkGrainMock = new Mock<IWorldChunkGrain>();
+        _orleansClientMock.Setup(x => x.GetGrain<IWorldChunkGrain>(It.IsAny<long>(), null))
+            .Returns(currentChunkGrainMock.Object)
+            .Verifiable(Times.Once);
+        currentChunkGrainMock.Setup(x => x.GetAllPlayers())
+            .Returns(Task.FromResult(playersInChunk))
+            .Verifiable(Times.Once);
+        currentChunkGrainMock.Setup(x => x.GetKey())
+            .Returns(Task.FromResult(0L))
+            .Verifiable(Times.Once);
+        currentChunkGrainMock.Setup(x => x.GetVisibleChunks(radius))
+            .Returns(Task.FromResult(visibleWorldChunks))
+            .Verifiable(Times.Once);
+
+        // Visible world chunk grain mock
+        VisibleWorldChunk visibleWorldChunk = visibleWorldChunks.ToArray().First(chunk => chunk.Id == chunkId);
+        _orleansClientMock.Setup(x => x.GetGrain<IWorldChunkGrain>(visibleWorldChunk.Id, null))
+            .Returns(visibleWorldChunkMock.Object)
+            .Verifiable(Times.Once);
+        visibleWorldChunkMock.Setup(x => x.GetAllPlayers())
+            .Returns(Task.FromResult(playersInChunk))
+            .Verifiable(Times.Once);
+
+        // Player grain mock
+        var playerGrainMock = new Mock<IPlayerGrain>();
+        playerGrainMock.Setup(x => x.GetCurrentChunk())
+            .Returns(Task.FromResult(currentChunkGrainMock.Object))
+            .Verifiable(Times.Once);
+        playerGrainMock.Setup(x => x.GetChunkVisibilityRadius())
+            .Returns(Task.FromResult(radius))
             .Verifiable(Times.Once);
 
         // Player registry mock
@@ -427,6 +540,53 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
         // Assert
         _orleansClientMock.Verify();
         playerRegistryMock.Verify();
+        playerGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task SendMovementIntent_ShouldCallPlayerGrain() {
+        // Arrange
+        SerializableVector2 destination = new(10, 20);
+        ulong tick = 1000;
+
+        Mock<IPlayerRegistry> playerRegistryMock = new();
+        Mock<IPlayerGrain> playerGrainMock = new();
+
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .ReturnsAsync(playerGrainMock.Object);
+        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick))
+            .Returns(Task.CompletedTask)
+            .Verifiable(Times.Once);
+
+        // Act
+        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick);
+
+        // Assert
+        playerGrainMock.Verify();
+    }
+
+    [Fact]
+    public async Task SendMovementIntent_ShouldNotCallPlayerGrainIfPlayerIsNotFound() {
+        // Arrange
+        SerializableVector2 destination = new(10, 20);
+        ulong tick = 1000;
+
+        Mock<IPlayerRegistry> playerRegistryMock = new();
+        Mock<IPlayerGrain> playerGrainMock = new();
+
+        _orleansClientMock.Setup(x => x.GetGrain<IPlayerRegistry>(Guid.Empty, null))
+            .Returns(playerRegistryMock.Object);
+        playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
+            .Returns(Task.FromResult<IPlayerGrain?>(null));
+        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick))
+            .Verifiable(Times.Never);
+
+        // Act
+        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick);
+
+        // Assert
         playerGrainMock.Verify();
     }
 }

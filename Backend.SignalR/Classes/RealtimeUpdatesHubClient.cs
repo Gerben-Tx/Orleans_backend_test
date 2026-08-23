@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Backend.Orleans.SharedContracts;
 using Backend.Orleans.SharedContracts.Serialization;
 using Backend.SignalR.SharedContracts;
@@ -192,6 +193,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         await playerGrain.ReceiveMovementIntent(destinationX, destinationY, tick);
     }
 
+    [ExcludeFromCodeCoverage(Justification = "Only used for debugging")]
     public async Task<PlayerPositionMessage?> DebugGetPlayerPosition(
         string playerName
     ) {
