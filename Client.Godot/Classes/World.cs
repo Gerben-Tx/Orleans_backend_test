@@ -470,10 +470,14 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         int posY,
         Array<Array<int>> path
     ) {
-        Player player = FindOrCreatePlayer(playerId, playerName, new Vector2(posX, posY), chunkId);
-        player.AddPathFromArray(path);
-
-        if (IsClientPlayer(playerId)) {
+        if (!IsClientPlayer(playerId)) {
+            // Update paths for other players
+            // Don't do this for the client player, since it already has it's own local
+            // version of the path. If we did this it would override the local path
+            // and the client player would teleport back.
+            Player player = FindOrCreatePlayer(playerId, playerName, new Vector2(posX, posY), chunkId);
+            player.AddPathFromArray(path);
+        } else {
             // Re-initialize chunk and player data if the client player joined a new chunk
             _currentChunkId = chunkId;
             await InitializeChunkAndPlayerData(chunkId);

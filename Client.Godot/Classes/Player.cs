@@ -41,12 +41,6 @@ public class Player {
     public void AddPathFromArray(
         Array<Array<int>> path
     ) {
-        // TODO: Player now moves directly on the new path locally, so lagg is gone
-        //  but after the server is done calculating and sending back the path
-        //  we teleport back to that path. We need to recognize that the path
-        //  we get from the server already matches our own calculated path, and ignore it.
-        //  If it doesn't match, we should override the local path with the server path.
-
         Queue<Vector2> newPath = new(path.ToList().ConvertAll(x => new Vector2(x[0], x[1])));
 
         // Override path if we don't have one yet locally
@@ -64,17 +58,14 @@ public class Player {
             Vector2 clientVector = CachedPath.ToList()[serverIndex];
             if (clientVector.Equals(serverVector)) {
                 // Client vector and server match, so continue to next vector
-                GD.Print("Client vector and server match, so continue to next vector");
+                // GD.Print("Client vector and server match, so continue to next vector");
                 continue;
             }
 
-            // TODO: When entering a new chunk, we get teleport back to the server path.
-            //  This is because we get a new path when entering the chunk which is only a part of our cached path
-
             // Client path doesn't match server path, override client path with server path
             GD.Print("Client path doesn't match server path, override client path with server path");
-            GD.Print($"Client path: {string.Join(" | ", CachedPath.Select(row => $"[{string.Join(", ", row)}]"))}");
-            GD.Print($"Server path: {string.Join(" | ", newPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+            // GD.Print($"Client path: {string.Join(" | ", CachedPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+            // GD.Print($"Server path: {string.Join(" | ", newPath.Select(row => $"[{string.Join(", ", row)}]"))}");
             Path = newPath;
             CachedPath = null;
             break;
