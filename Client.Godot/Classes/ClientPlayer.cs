@@ -5,7 +5,6 @@ using Backend.SignalR.SharedContracts;
 using Godot;
 using Roy_T.AStar.Paths;
 using Shared.Pathfinding;
-using Vector2 = System.Numerics.Vector2;
 
 namespace Client.Godot.Classes;
 
@@ -45,17 +44,23 @@ public class ClientPlayer : Player {
 
         // Use pathfinding service to get the path locally
         Task<Path?> path = _pathfindingService.FindPath(
-            new Vector2(Position.X, Position.Y),
-            new Vector2(newPosition.X, newPosition.Y)
+            new System.Numerics.Vector2(Position.X, Position.Y),
+            new System.Numerics.Vector2(newPosition.X, newPosition.Y)
         );
 
         // Give new path to player
         path.ContinueWith(task => {
-            if (task.Result != null) {
-                Path = new Queue<global::Godot.Vector2>(
-                    task.Result.Edges.ToList()
-                        .ConvertAll(x => new global::Godot.Vector2(x.End.Position.X, x.End.Position.Y)));
+            if (task.Result == null) {
+                Path = null;
+                CachedPath = null;
+
+                return;
             }
+
+            Path = new Queue<Vector2>(
+                task.Result.Edges.ToList()
+                    .ConvertAll(x => new Vector2(x.End.Position.X, x.End.Position.Y)));
+            CachedPath = Path.ToList();
         });
     }
 

@@ -20,7 +20,9 @@ public class PathfindingService {
         Size cellSize = new(Distance.FromMeters(1), Distance.FromMeters(1));
         Velocity traversalVelocity = Velocity.FromMetersPerSecond(1F); // This is not really used for our use case
 
-        _grid = Grid.CreateGridWithDiagonalConnections(gridSize, cellSize, traversalVelocity);
+        // _grid = Grid.CreateGridWithDiagonalConnections(gridSize, cellSize, traversalVelocity);
+        // _grid = Grid.CreateGridWithLateralConnections(gridSize, cellSize, traversalVelocity);
+        _grid = Grid.CreateGridWithLateralAndDiagonalConnections(gridSize, cellSize, traversalVelocity);
     }
 
     public Task<Path?> FindPath(

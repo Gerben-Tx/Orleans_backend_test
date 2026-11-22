@@ -12,12 +12,12 @@ namespace Backend.Orleans.GrainClasses;
 public class PlayerGrain : BaseGrain, IPlayerGrain {
     private readonly List<PlayerInput> _inputs = new();
     private readonly ILogger<PlayerGrain> _logger;
-    private readonly Queue<SerializableVector2> _path = new();
     private readonly IPathfindingService _pathFindingService;
     private readonly IPersistentState<PlayerState> _playerState;
     private readonly IRealtimeUpdatesOrleans _realtimeUpdates;
     private readonly ITickManager _tickManager;
     private int _chunkVisibileRadius = 1;
+    private Queue<SerializableVector2> _path = new();
     private string? _realtimeUpdatesConnectionId;
     private Vector2? _targetDestination = null;
 
@@ -198,27 +198,37 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         IWorldChunkGrain currentChunk = await GetCurrentChunk();
 
-        Path? path = await _pathFindingService.FindPath(
+        Path? newPath = await _pathFindingService.FindPath(
             _playerState.State.Position.ToVector2(),
             new Vector2(
                 destinationX,
                 destinationY
             )
         );
-        if (path is null) {
+        if (newPath is null) {
             _logger.LogWarning("Could not find a path!");
             return;
         }
 
-        foreach (IEdge? edge in path.Edges) {
-            _path.Enqueue(new SerializableVector2((int)edge.End.Position.X, (int)edge.End.Position.Y));
+        Queue<SerializableVector2> newQueue = new();
+        foreach (IEdge? edge in newPath.Edges) {
+            newQueue.Enqueue(new SerializableVector2((int)edge.End.Position.X, (int)edge.End.Position.Y));
         }
+
+        _logger.LogDebug(
+            "New path created: {Path}",
+            string.Join(" | ", newQueue.ToList().ConvertAll<string>(x => $"{x.X},{x.Y}").ToArray()));
 
         await _realtimeUpdates.PlayerNewPathCreated(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
-            _path.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray()
+            newQueue.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray()
         );
+
+        // Only update the whole path after sending it back to the client
+        // this solves an issue where the path is dequeued a couple of times
+        // before the new path reaches the client.
+        _path = newQueue;
     }
 
     public override async Task OnActivateAsync(
@@ -307,6 +317,11 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         // _logger.LogDebug("Sending path movement update...");
         SerializableVector2 newPosition = _path.Dequeue();
 
+        _logger.LogDebug(
+            "Current player position: {PlayerStatePosition} | New player position: {NewPosition}",
+            _playerState.State.Position.ToArray(),
+            newPosition.ToArray());
+
         _playerState.State.Position = newPosition; // Save position in state
         await _playerState.WriteStateAsync();
 
@@ -323,11 +338,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
         // Enter new chunk if we cross borders
         if (newChunkPosition != currentChunkPosition) {
-            _logger.LogDebug(
-                "Current chunk position: {CurrentChunkPosition} | New chunk position: {NewChunkPosition}",
-                currentChunkPosition,
-                newChunkPosition);
-
             long? newChunkId = await currentChunk.GetChunkIdByPosition(newChunkPosition);
             if (newChunkId == null) {
                 _logger.LogWarning("Could not find chunk id for position {Position}!", newChunkPosition);

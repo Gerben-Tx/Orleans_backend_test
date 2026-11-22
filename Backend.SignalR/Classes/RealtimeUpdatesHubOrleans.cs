@@ -19,7 +19,8 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
         string playerId,
         int[][] path
     ) {
-        Logger.LogDebug($"PlayerNewPathCreated received: {groupName}, {playerId}, {path})");
+        Logger.LogDebug(
+            $"PlayerNewPathCreated received: {groupName}, {playerId}, {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}");
 
         await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerNewPathCreated(playerId, path);
     }
@@ -34,7 +35,7 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
         int[][] path
     ) {
         Logger.LogDebug(
-            $"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}, {chunkId}, ({posX},{posY}), {path}");
+            $"PlayerAddedToChunk received: {groupName}, {playerId}, {playerName}, {chunkId}, ({posX},{posY}), {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}");
 
         await _realtimeUpdatesHubClientContext.Clients.Group(groupName)
             .PlayerAddedToChunk(playerId, playerName, chunkId, posX, posY, path);
