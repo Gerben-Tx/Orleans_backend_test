@@ -35,6 +35,7 @@ public class ClientPlayer : Player {
     public void MoveTo(
         Vector2I newPosition
     ) {
+        GD.Print($"Sending movement intent ({newPosition.X},{newPosition.Y},{_clientSimulation.Ticks})");
         ServerCommunicator.Instance.HubProxy.SendMovementIntent(
             Name,
             newPosition.X,

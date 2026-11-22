@@ -9,6 +9,11 @@ public partial class Tile : MeshInstance3D {
         Vector2I position
     );
 
+    /// <summary>
+    /// Flag used to block subsequent mouse presses while not being released
+    /// </summary>
+    private bool _blockMouseclick = false;
+
     [Export] private CollisionShape3D _collisionShape3D = null!;
     public Vector2I ServerPosition { get; set; }
     public WorldChunk WorldChunk { get; set; }
@@ -49,13 +54,19 @@ public partial class Tile : MeshInstance3D {
     ) {
         // GD.Print($"OnArea3DInputEvent: {eventPosition}, {normal}, {shapeIndex}");
 
-        if (@event is InputEventMouseButton mouseButton
-            && mouseButton.ButtonIndex == MouseButton.Left
-            && mouseButton.Pressed
-           ) {
-            GD.Print($"Tile clicked, position: {ServerPosition}, chunk: {WorldChunk.ChunkId}");
+        if (@event is InputEventMouseButton mouseButton && mouseButton.ButtonIndex == MouseButton.Left) {
+            if (mouseButton.Pressed && !_blockMouseclick) {
+                _blockMouseclick = true;
 
-            EmitSignalOnTileClicked(ServerPosition);
+                GD.Print($"Tile clicked, position: {ServerPosition}, chunk: {WorldChunk.ChunkId}");
+
+                EmitSignalOnTileClicked(ServerPosition);
+            }
+
+            // Release block if mouse button is released
+            if (mouseButton.IsReleased() && _blockMouseclick) {
+                _blockMouseclick = false;
+            }
         }
     }
 
