@@ -15,7 +15,9 @@ using Orleans.Configuration;
 using IHost host = new HostBuilder()
     .UseOrleans(silo => {
         silo
-            .UseLocalhostClustering()
+            .UseLocalhostClustering(
+                gatewayPort: 30010
+            )
             .AddAzureTableGrainStorage(
                 name: "tableStore",
                 configureOptions: options => {

@@ -2,15 +2,20 @@
 
 ## Overview
 
-This project is the host for the Orleans cluster (the "Silo"). It is a Console Application responsible for bootstrapping the Orleans framework, configuring its various services (persistence, streaming, clustering), and hosting the game's Grains.
+This project is the host for the Orleans cluster (the "Silo"). It is a Console Application responsible for bootstrapping
+the Orleans framework, configuring its various services (persistence, streaming, clustering), and hosting the game's
+Grains.
 
-Its main responsibility is to provide the execution environment for the distributed actors defined in the `GrainClasses` project.
+Its main responsibility is to provide the execution environment for the distributed actors defined in the `GrainClasses`
+project.
 
 ---
 
 ## Why This Project Exists
 
-This project exists to separate the hosting and configuration of the Orleans cluster from the actual business logic. By having a dedicated Silo project, we can:
+This project exists to separate the hosting and configuration of the Orleans cluster from the actual business logic. By
+having a dedicated Silo project, we can:
+
 - Centralize the configuration of infrastructure concerns (storage, networking, logging).
 - Provide a clear entry point for starting the backend services.
 - Easily scale the system by running multiple instances of this project in a cluster.
@@ -83,7 +88,9 @@ The project is configured in `Program.cs` and currently uses local development s
 
 ## Running the Project Locally
 
-1. Ensure the **Azurite** emulator (or a real Azure Storage account) is running to provide Table, Blob, and Queue services.
+1. Ensure the **Azurite** emulator (or a real Azure Storage account) is running to provide Table, Blob, and Queue
+   services.
+    1. For Azurite emulator, in Rider go to `Tools -> Services -> Azurite Emulator -> Click start button`
 2. Ensure the `Backend.SignalR` project is running if real-time updates are needed.
 3. Start the `Backend.Orleans.Silo` project from your IDE or via command line:
    ```bash

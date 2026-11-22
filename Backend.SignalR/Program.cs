@@ -4,14 +4,17 @@ using Backend.SignalR.Classes;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddOrleansClient(clientBuilder => {
-        clientBuilder.UseLocalhostClustering();
+        clientBuilder.UseLocalhostClustering(
+            gatewayPort: 30010
+        );
         // clientBuilder.UseSignalR(configure: null);
         clientBuilder.AddAzureQueueStreams(
             name: "StreamProvider",
             configureOptions: options => {
-                options.Configure(configureOptions: options => {
-                    options.QueueServiceClient = new QueueServiceClient("UseDevelopmentStorage=true");
-                });
+                options.Configure(
+                    configureOptions: options => {
+                        options.QueueServiceClient = new QueueServiceClient("UseDevelopmentStorage=true");
+                    });
             }
         );
     })
