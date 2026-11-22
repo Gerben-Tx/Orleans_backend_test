@@ -9,6 +9,10 @@ public class Player {
     public string Id { get; private set; }
     public string Name { get; private set; }
     public Node3D PlayerNode { get; private set; }
+    public Vector2I Position {
+        get => new((int)PlayerNode.Position.X, (int)PlayerNode.Position.Z);
+        set => PlayerNode.Position = new Vector3(value.X, PlayerNode.Position.Y, value.Y);
+    } // Small wrapper around the PlayerNode.Position to be able to use vector2 in 3d space
     public Queue<Vector2>? Path { get; set; }
 
     public Player(

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
 using Godot.Collections;
+using Shared.Pathfinding;
 
 #if DEBUG
 using CommandLine;
@@ -21,6 +22,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     private long _currentChunkId;
     private bool _initialized;
     private WorldChunkList _loadedChunks = [];
+    private PathfindingService _pathfindingService;
 
     private RandomNumberGenerator _randomNumberGenerator = new();
     private PackedScene _tileScene = GD.Load<PackedScene>("res://ground.tscn");
@@ -105,6 +107,10 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GD.Print("Requesting world info...");
         _worldInfo = await ServerCommunicator.Instance.HubProxy.GetWorldInfo();
         _clientSimulation = new ClientSimulation(_worldInfo.CurrentTick, _worldInfo.TicksPerSecond, HandleTick);
+        _pathfindingService = new PathfindingService(
+            columns: _worldInfo.WorldSizeX * _worldInfo.ChunkSizeX,
+            rows: _worldInfo.WorldSizeY * _worldInfo.ChunkSizeX
+        );
         GD.Print("World info: " + _worldInfo);
 
         // Request current chunk id
@@ -189,7 +195,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             // Remove old ground chunks that are no longer visible
             // Create a new array to avoid "System.InvalidOperationException: Collection was modified; enumeration operation may not execute."
             IEnumerable<WorldChunk> chunksToUnload = [
-                .._loadedChunks.Where(loadedChunk =>
+                .. _loadedChunks.Where(loadedChunk =>
                         !visibleChunks.Select(visibleChunk => visibleChunk.ChunkId)
                             .Contains(loadedChunk.ChunkId) // Filter out chunks that are not visible anymore
                         && loadedChunk.ChunkId != _currentChunkId // Filter out the current chunk
@@ -373,7 +379,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         playerObj = new Player(playerId, playerName, playerNode);
         if (IsClientPlayer(playerId)) {
             // Convert player to a client player
-            _clientPlayer = new ClientPlayer(_clientSimulation, playerObj);
+            _clientPlayer = new ClientPlayer(_clientSimulation, playerObj, _pathfindingService);
 
             playerObj = _clientPlayer;
         }
@@ -424,20 +430,14 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
     }
 
     private void UpdatePlayer(
-        string playerId,
+        Player player,
         int posX,
         int posY
     ) {
-        Node playersNode = GetNode<Node>("%Players");
-        Node3D playerNode = (Node3D)playersNode.FindChild(playerId);
-        if (playerNode == null) {
-            return;
-        }
-
         GD.Print(
-            $"Updating player {playerId} from ({playerNode.Position.X},{playerNode.Position.Y}) to ({posX},{posY})...");
+            $"Updating player {player.Id} from ({player.Position.X},{player.Position.Y}) to ({posX},{posY})...");
 
-        playerNode.Position = new Vector3(posX, 0, posY);
+        player.Position = new Vector2I(posX, posY);
     }
 
     /// <summary>
@@ -538,7 +538,7 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                 return;
             }
 
-            UpdatePlayer(player.Id, (int)nextPathPoint.Value.X, (int)nextPathPoint.Value.Y);
+            UpdatePlayer(player, (int)nextPathPoint.Value.X, (int)nextPathPoint.Value.Y);
         });
     }
 

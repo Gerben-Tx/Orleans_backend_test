@@ -16,6 +16,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Backend.Orleans.Grain
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Backend.SignalR", "Tests.Backend.SignalR\Tests.Backend.SignalR.csproj", "{238647AF-A22A-4C66-BE16-C68E83FC41BC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared.Pathfinding", "Shared.Pathfinding\Shared.Pathfinding.csproj", "{D181ED7F-9600-43A9-AC52-1DF686D32030}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 	Debug|Any CPU = Debug|Any CPU
@@ -71,5 +73,11 @@ Global
 		{238647AF-A22A-4C66-BE16-C68E83FC41BC}.ExportDebug|Any CPU.Build.0 = Debug|Any CPU
 		{238647AF-A22A-4C66-BE16-C68E83FC41BC}.ExportRelease|Any CPU.ActiveCfg = Debug|Any CPU
 		{238647AF-A22A-4C66-BE16-C68E83FC41BC}.ExportRelease|Any CPU.Build.0 = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.ExportDebug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.ExportDebug|Any CPU.Build.0 = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.ExportRelease|Any CPU.ActiveCfg = Debug|Any CPU
+		{D181ED7F-9600-43A9-AC52-1DF686D32030}.ExportRelease|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 EndGlobal
