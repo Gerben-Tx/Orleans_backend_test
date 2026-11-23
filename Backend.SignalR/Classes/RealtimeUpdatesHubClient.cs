@@ -183,14 +183,15 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
         string playerName,
         int destinationX,
         int destinationY,
-        ulong tick
+        ulong tick,
+        ulong id
     ) {
         IPlayerGrain? playerGrain = await FindPlayerInRegistry(playerName);
         if (playerGrain == null) {
             return;
         }
 
-        await playerGrain.ReceiveMovementIntent(destinationX, destinationY, tick);
+        await playerGrain.ReceiveMovementIntent(destinationX, destinationY, tick, id);
     }
 
     [ExcludeFromCodeCoverage(Justification = "Only used for debugging")]

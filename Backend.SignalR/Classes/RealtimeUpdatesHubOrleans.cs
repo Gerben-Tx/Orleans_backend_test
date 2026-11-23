@@ -17,12 +17,13 @@ public class RealtimeUpdatesHubOrleans : RealtimeUpdatesHub<IRealtimeUpdatesClie
     public async Task PlayerNewPathCreated(
         string groupName,
         string playerId,
-        int[][] path
+        int[][] path,
+        ulong? id
     ) {
         Logger.LogDebug(
-            $"PlayerNewPathCreated received: {groupName}, {playerId}, {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}");
+            $"PlayerNewPathCreated received: {groupName}, {playerId}, {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}, {id}");
 
-        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerNewPathCreated(playerId, path);
+        await _realtimeUpdatesHubClientContext.Clients.Group(groupName).PlayerNewPathCreated(playerId, path, id);
     }
 
     public async Task PlayerAddedToChunk(

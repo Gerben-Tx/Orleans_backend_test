@@ -4,7 +4,12 @@ namespace Backend.SignalR.SharedContracts;
 /// Contains updates that are send from Server -> Client
 /// </summary>
 public interface IRealtimeUpdatesClient {
-    Task PlayerNewPathCreated(string playerId, int[][] path);
+    Task PlayerNewPathCreated(
+        string playerId,
+        int[][] path,
+        ulong? id
+    );
+
     Task PlayerAddedToChunk(
         string playerId,
         string playerName,
@@ -13,5 +18,9 @@ public interface IRealtimeUpdatesClient {
         int posY,
         int[][] path
     );
-    Task PlayerRemovedFromChunk(string playerId, long chunkId);
+
+    Task PlayerRemovedFromChunk(
+        string playerId,
+        long chunkId
+    );
 }

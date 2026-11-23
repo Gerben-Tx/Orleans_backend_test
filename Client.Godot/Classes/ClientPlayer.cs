@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Backend.SignalR.SharedContracts;
 using Godot;
+using Godot.Collections;
 using Roy_T.AStar.Paths;
 using Shared.Pathfinding;
 
@@ -12,6 +13,7 @@ public class ClientPlayer : Player {
     private readonly ClientSimulation _clientSimulation;
     private readonly PathfindingService _pathfindingService;
     private readonly RandomNumberGenerator _randomNumberGenerator = new();
+    private ulong _lastSendMovementIntentId = 0;
 
     public ClientPlayer(
         string id,
@@ -40,7 +42,8 @@ public class ClientPlayer : Player {
             Name,
             newPosition.X,
             newPosition.Y,
-            _clientSimulation.Ticks
+            _clientSimulation.Ticks,
+            ++_lastSendMovementIntentId
         );
 
         // Use pathfinding service to get the path locally
@@ -91,5 +94,18 @@ public class ClientPlayer : Player {
         #endregion
 
 #endif
+    }
+
+    public void HandleNewPathCreated(
+        Array<Array<int>> path,
+        ulong? id
+    ) {
+        if (id != null && id != _lastSendMovementIntentId) {
+            // If we have an id and it doesn't match the last send movement intent id, ignore the new path
+            GD.Print("Ignoring new path with id: ", id);
+            return;
+        }
+
+        AddPathFromArray(path);
     }
 }

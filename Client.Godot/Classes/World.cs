@@ -30,18 +30,23 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     public Task PlayerNewPathCreated(
         string playerId,
-        int[][] path
+        int[][] path,
+        ulong? id
     ) {
         if (!_initialized) {
             return Task.CompletedTask;
         }
 
         GD.Print(
-            $"debug PlayerNewPathCreated: {playerId}, {string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}");
+            $"debug PlayerNewPathCreated: {playerId}, ({string.Join(" | ", path.Select(row => $"[{string.Join(", ", row)}]"))}), {id}");
         Array<Array<int>> pathConverted = ConvertPathToArray(path);
 
         // TODO: Move to a queue instead of handling this directly
-        CallDeferred(nameof(HandlePlayerNewPathCreated), playerId, pathConverted);
+        CallDeferred(
+            nameof(HandlePlayerNewPathCreated),
+            playerId,
+            pathConverted,
+            id ?? 0);
         return Task.CompletedTask;
     }
 
@@ -454,12 +459,26 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
     private void HandlePlayerNewPathCreated(
         string playerId,
-        Array<Array<int>> path
+        Array<Array<int>> path,
+        ulong id
     ) {
-        // Update the path for the player
+        // Ugly, but ulong? is not a valid Godot.Variant
+        // so the callee (PlayerNewPathCreated) has to convert it to  a non-nullable ulong
+        ulong? nullableId = id;
+        if (nullableId == 0) {
+            nullableId = null;
+        }
+
         // TODO: replace this ugly hack. The player name also never gets updated after this...
         Player player = FindOrCreatePlayer(playerId, "Unknown", new Vector2(0, 0), 0);
-        player.AddPathFromArray(path);
+
+        // Update the path for the player
+        if (IsClientPlayer(playerId)) {
+            ClientPlayer clientPlayer = (ClientPlayer)player;
+            clientPlayer.HandleNewPathCreated(path, nullableId);
+        } else {
+            player.AddPathFromArray(path);
+        }
     }
 
     private async void HandlePlayerAddedToChunk(

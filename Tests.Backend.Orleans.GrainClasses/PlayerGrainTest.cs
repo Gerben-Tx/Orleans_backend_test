@@ -64,12 +64,13 @@ public class PlayerGrainTest : TestKitBase {
                     array[0].Length == 2 &&
                     array[0][0] == node2.Position.X &&
                     array[0][1] == node2.Position.Y
-                )
+                ),
+                It.IsAny<ulong?>()
             ))
             .Verifiable(Times.Once);
 
         // Act
-        await grain.CreateNewPathAndNotify(destinationX, destinationY);
+        await grain.CreateNewPathAndNotify(destinationX, destinationY, null);
 
         // Assert
         realtimeUpdatesMock.Verify();
@@ -636,9 +637,9 @@ public class PlayerGrainTest : TestKitBase {
         ulong currentTick = 1234567890;
         ulong oldTick = currentTick - 1;
         Guid playerGrainGuid = Guid.NewGuid();
-        Tuple<int, int, ulong>[] inputs = [
-            new(1, 1, oldTick),
-            new(1, 2, currentTick)
+        Tuple<int, int, ulong, ulong>[] inputs = [
+            new(1, 1, oldTick, 1),
+            new(1, 2, currentTick, 2)
         ];
         Node node1 = new(new Position(1, 1));
         Node node2 = new(new Position(2, 1));
@@ -687,13 +688,14 @@ public class PlayerGrainTest : TestKitBase {
         realtimeUpdatesMock.Setup(x => x.PlayerNewPathCreated(
                 It.IsAny<string>(),
                 It.IsAny<string>(),
-                It.IsAny<int[][]>())
+                It.IsAny<int[][]>(),
+                It.IsAny<ulong?>())
             )
             .Verifiable(Times.Once);
 
         PlayerGrain grain = await Silo.CreateGrainAsync<PlayerGrain>(playerGrainGuid);
         foreach (var input in inputs) {
-            await grain.ReceiveMovementIntent(input.Item1, input.Item2, input.Item3);
+            await grain.ReceiveMovementIntent(input.Item1, input.Item2, input.Item3, input.Item4);
         }
 
         // Act

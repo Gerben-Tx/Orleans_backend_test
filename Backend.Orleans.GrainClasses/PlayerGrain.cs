@@ -125,16 +125,6 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await MovementUpdate();
     }
 
-    public Task ReceiveMovementIntent(
-        int destinationX,
-        int destinationY,
-        ulong tick
-    ) {
-        _inputs.Add(new MovementInput(destinationX, destinationY, tick));
-
-        return Task.CompletedTask;
-    }
-
     public Task<SerializableVector2> GetPosition() {
         return Task.FromResult(_playerState.State.Position);
     }
@@ -191,7 +181,8 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
 
     public async Task CreateNewPathAndNotify(
         int destinationX,
-        int destinationY
+        int destinationY,
+        ulong? id
     ) {
         // Clear current path
         _path.Clear();
@@ -222,13 +213,25 @@ public class PlayerGrain : BaseGrain, IPlayerGrain {
         await _realtimeUpdates.PlayerNewPathCreated(
             await currentChunk.GetRealtimeUpdatesGroupName(),
             this.GetPrimaryKeyString(),
-            newQueue.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray()
+            newQueue.ToList().ConvertAll<int[]>(x => x.ToArray()).ToArray(),
+            id
         );
 
         // Only update the whole path after sending it back to the client
         // this solves an issue where the path is dequeued a couple of times
         // before the new path reaches the client.
         _path = newQueue;
+    }
+
+    public Task ReceiveMovementIntent(
+        int destinationX,
+        int destinationY,
+        ulong tick,
+        ulong id
+    ) {
+        _inputs.Add(new MovementInput(destinationX, destinationY, tick, id));
+
+        return Task.CompletedTask;
     }
 
     public override async Task OnActivateAsync(

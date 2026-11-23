@@ -64,8 +64,8 @@ public class Player {
 
             // Client path doesn't match server path, override client path with server path
             GD.Print("Client path doesn't match server path, override client path with server path");
-            // GD.Print($"Client path: {string.Join(" | ", CachedPath.Select(row => $"[{string.Join(", ", row)}]"))}");
-            // GD.Print($"Server path: {string.Join(" | ", newPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+            GD.Print($"Client path: {string.Join(" | ", CachedPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+            GD.Print($"Server path: {string.Join(" | ", newPath.Select(row => $"[{string.Join(", ", row)}]"))}");
             Path = newPath;
             CachedPath = null;
             break;

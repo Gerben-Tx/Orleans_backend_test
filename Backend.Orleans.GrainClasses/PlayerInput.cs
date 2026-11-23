@@ -3,11 +3,14 @@ using Backend.Orleans.SharedContracts;
 namespace Backend.Orleans.GrainClasses;
 
 internal abstract class PlayerInput {
+    public readonly ulong Id;
     public readonly ulong Tick;
 
     protected PlayerInput(
-        ulong tick
+        ulong tick,
+        ulong id
     ) {
+        Id = id;
         Tick = tick;
     }
 
@@ -23,8 +26,9 @@ internal class MovementInput : PlayerInput {
     public MovementInput(
         int destinationX,
         int destinationY,
-        ulong tick
-    ) : base(tick) {
+        ulong tick,
+        ulong id
+    ) : base(tick, id) {
         _destinationX = destinationX;
         _destinationY = destinationY;
     }
@@ -32,6 +36,6 @@ internal class MovementInput : PlayerInput {
     public override void Apply(
         IPlayerGrain playerGrain
     ) {
-        playerGrain.CreateNewPathAndNotify(_destinationX, _destinationY);
+        playerGrain.CreateNewPathAndNotify(_destinationX, _destinationY, Id);
     }
 }

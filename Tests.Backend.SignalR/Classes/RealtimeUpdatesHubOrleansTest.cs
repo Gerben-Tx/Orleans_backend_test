@@ -89,11 +89,11 @@ public class RealtimeUpdatesHubOrleansTest {
         _realtimeUpdatesHubClientContextMock.Setup(x => x.Clients.Group(groupName))
             .Returns(_realtimeUpdatesClientMock.Object)
             .Verifiable(Times.Once);
-        _realtimeUpdatesClientMock.Setup(x => x.PlayerNewPathCreated(playerId, path))
+        _realtimeUpdatesClientMock.Setup(x => x.PlayerNewPathCreated(playerId, path, 1))
             .Verifiable(Times.Once);
 
         // Act
-        await _hub.PlayerNewPathCreated(groupName, playerId, path);
+        await _hub.PlayerNewPathCreated(groupName, playerId, path, 1);
 
         // Assert
         _realtimeUpdatesClientMock.Verify();

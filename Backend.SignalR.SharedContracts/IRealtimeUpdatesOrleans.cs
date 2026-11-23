@@ -4,7 +4,13 @@ namespace Backend.SignalR.SharedContracts;
 /// Contains updates that are send from Orleans -> (Server) -> Client
 /// </summary>
 public interface IRealtimeUpdatesOrleans {
-    Task PlayerNewPathCreated(string groupName, string playerId, int[][] path);
+    Task PlayerNewPathCreated(
+        string groupName,
+        string playerId,
+        int[][] path,
+        ulong? id
+    );
+
     Task PlayerAddedToChunk(
         string groupName,
         string playerId,
@@ -14,7 +20,20 @@ public interface IRealtimeUpdatesOrleans {
         int posY,
         int[][] path
     );
-    Task PlayerRemovedFromChunk(string groupName, string playerId, long chunkId);
-    Task AddToGroupAsync(string groupName, string connectionId);
-    Task RemoveFromGroupAsync(string groupName, string connectionId);
+
+    Task PlayerRemovedFromChunk(
+        string groupName,
+        string playerId,
+        long chunkId
+    );
+
+    Task AddToGroupAsync(
+        string groupName,
+        string connectionId
+    );
+
+    Task RemoveFromGroupAsync(
+        string groupName,
+        string connectionId
+    );
 }

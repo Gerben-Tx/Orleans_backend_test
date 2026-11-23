@@ -40,7 +40,8 @@ public interface IRealtimeUpdatesHub {
         string playerName,
         int destinationX,
         int destinationY,
-        ulong tick
+        ulong tick,
+        ulong id
     );
 
     Task<PlayerPositionMessage?> DebugGetPlayerPosition(

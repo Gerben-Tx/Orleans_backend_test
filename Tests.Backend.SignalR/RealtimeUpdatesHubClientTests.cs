@@ -556,12 +556,12 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Returns(playerRegistryMock.Object);
         playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
             .ReturnsAsync(playerGrainMock.Object);
-        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick))
+        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick, 1))
             .Returns(Task.CompletedTask)
             .Verifiable(Times.Once);
 
         // Act
-        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick);
+        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick, 1);
 
         // Assert
         playerGrainMock.Verify();
@@ -580,11 +580,11 @@ public class RealtimeUpdatesHubClientTests : TestKitBase {
             .Returns(playerRegistryMock.Object);
         playerRegistryMock.Setup(x => x.FindPlayerByName(PlayerName))
             .Returns(Task.FromResult<IPlayerGrain?>(null));
-        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick))
+        playerGrainMock.Setup(x => x.ReceiveMovementIntent(destination.X, destination.Y, tick, 1))
             .Verifiable(Times.Never);
 
         // Act
-        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick);
+        await _realtimeUpdatesHubClient.SendMovementIntent(PlayerName, destination.X, destination.Y, tick, 1);
 
         // Assert
         playerGrainMock.Verify();

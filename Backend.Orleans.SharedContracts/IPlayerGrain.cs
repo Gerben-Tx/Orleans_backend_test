@@ -33,11 +33,13 @@ public interface IPlayerGrain : IGrainWithGuidKey {
     public Task ReceiveMovementIntent(
         int destinationX,
         int destinationY,
-        ulong tick
+        ulong tick,
+        ulong id
     );
 
     public Task CreateNewPathAndNotify(
         int destinationX,
-        int destinationY
+        int destinationY,
+        ulong? id
     );
 }
