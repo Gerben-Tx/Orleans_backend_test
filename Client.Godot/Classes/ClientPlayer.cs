@@ -14,6 +14,12 @@ public class ClientPlayer : Player {
     private readonly PathfindingService _pathfindingService;
     private readonly RandomNumberGenerator _randomNumberGenerator = new();
     private ulong _lastSendMovementIntentId = 0;
+    /// <summary>
+    /// Contains the whole path we generated ourselves. This includes vectors we may have already visited.
+    /// Used to compare against the path we get from the server to see if we need to update our path or not.
+    /// </summary>
+    private Array<Vector2I>? PredictedPath { get; set; }
+    private int _remainingPointsOnPath => Path?.Count ?? 0;
 
     public ClientPlayer(
         string id,
@@ -46,6 +52,12 @@ public class ClientPlayer : Player {
             ++_lastSendMovementIntentId
         );
 
+        ApplyClientSidePrediction(newPosition);
+    }
+
+    private void ApplyClientSidePrediction(
+        Vector2I newPosition
+    ) {
         // Use pathfinding service to get the path locally
         Task<Path?> path = _pathfindingService.FindPath(
             new System.Numerics.Vector2(Position.X, Position.Y),
@@ -56,15 +68,15 @@ public class ClientPlayer : Player {
         path.ContinueWith(task => {
             if (task.Result == null) {
                 Path = null;
-                CachedPath = null;
+                PredictedPath = null;
 
                 return;
             }
 
-            Path = new Queue<Vector2>(
+            Path = new Queue<Vector2I>(
                 task.Result.Edges.ToList()
-                    .ConvertAll(x => new Vector2(x.End.Position.X, x.End.Position.Y)));
-            CachedPath = Path.ToList();
+                    .ConvertAll(input => new Vector2I((int)input.End.Position.X, (int)input.End.Position.Y)));
+            PredictedPath = (Array<Vector2I>)[.. Path];
         });
     }
 
@@ -96,8 +108,8 @@ public class ClientPlayer : Player {
 #endif
     }
 
-    public void HandleNewPathCreated(
-        Array<Array<int>> path,
+    public void ApplyServerReconciliation(
+        Array<Vector2I> serverPath,
         ulong? id
     ) {
         if (id != null && id != _lastSendMovementIntentId) {
@@ -106,6 +118,72 @@ public class ClientPlayer : Player {
             return;
         }
 
-        AddPathFromArray(path);
+        // Override path if we don't have one yet locally
+        if (Path == null || PredictedPath == null) {
+            GD.Print("Override path because we don't have one yet locally");
+            AddPathFromArray(serverPath);
+            return;
+        }
+
+        // Check if server path matches predicted path
+        Array<Vector2I> serverPathSliced = serverPath.GetSliceRange(
+            _remainingPointsOnPath * -1,
+            serverPath.Count); // Only verify the remaining points on the path
+        Array<Vector2I> predictedPathSliced = PredictedPath.GetSliceRange(
+            _remainingPointsOnPath * -1,
+            PredictedPath.Count);
+
+#if DEBUG
+        GD.Print($"Remaining points on path: {_remainingPointsOnPath}");
+        GD.Print($"Current position: [{Position.X}, {Position.Y}]");
+        GD.Print(
+            $"Current path:          {string.Join(" | ", Path.Select(row => $"[{string.Join(", ", row)}]"))}");
+        GD.Print(
+            $"Predicted path:        {string.Join(" | ", PredictedPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+        GD.Print(
+            $"Predicted sliced path: {string.Join(" | ", predictedPathSliced.Select(row => $"[{string.Join(", ", row)}]"))}");
+        GD.Print(
+            $"Server path:           {string.Join(" | ", serverPath.Select(row => $"[{string.Join(", ", row)}]"))}");
+        GD.Print(
+            $"Server sliced path:    {string.Join(" | ", serverPathSliced.Select(row => $"[{string.Join(", ", row)}]"))}");
+#endif
+
+        foreach (Vector2I serverVector in serverPathSliced) {
+            int serverIndex = serverPathSliced.IndexOf(serverVector);
+
+            // Validate that the client vector and server vector match
+            Vector2 clientVector = predictedPathSliced[serverIndex];
+            if (clientVector.Equals(serverVector)) {
+                // Client vector and server match, so continue to next vector
+#if DEBUG
+                GD.Print("Predicted vector and server match, so continue to next vector");
+#endif
+                continue;
+            }
+
+            // Predicted path doesn't match server path, override path with server path
+            GD.Print("Predicted path doesn't match server path, override path with server path");
+            PredictedPath = null;
+            AddPathFromArray(serverPathSliced);
+
+            break;
+        }
+
+        // TODO: if we are more than X points away from the server pos, we should teleport back / wait in place
+
+        // TODO: should we update the CachedPath with the server path if all vectors match?
+
+        // TODO: issue:
+        //  When you click 3 times on different places with a ~second in between, the paths don't match 
+        //  Example;
+        //   Remaining points on path: 0
+        //   Current position: [245, 45]
+        //   Current path:
+        //   Predicted path:        [(252, 40)] | [(251, 41)] | [(250, 42)] | [(249, 43)] | [(248, 44)] | [(247, 44)] | [(246, 45)] | [(245, 45)]
+        //   Predicted sliced path: [(252, 40)] | [(251, 41)] | [(250, 42)] | [(249, 43)] | [(248, 44)] | [(247, 44)] | [(246, 45)] | [(245, 45)]
+        //   Server path:           [(253, 38)] | [(252, 39)] | [(251, 40)] | [(250, 41)] | [(249, 42)] | [(248, 43)] | [(247, 44)] | [(246, 45)] | [(245, 45)]
+        //   Server sliced path:    [(253, 38)] | [(252, 39)] | [(251, 40)] | [(250, 41)] | [(249, 42)] | [(248, 43)] | [(247, 44)] | [(246, 45)] | [(245, 45)]
+        //  I think this is due to the client already being somewhere else when creating it's 3rd path.
+        //  To fix this we can 
     }
 }

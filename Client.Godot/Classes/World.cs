@@ -471,13 +471,14 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         // TODO: replace this ugly hack. The player name also never gets updated after this...
         Player player = FindOrCreatePlayer(playerId, "Unknown", new Vector2(0, 0), 0);
+        Array<Vector2I> vectorPath = new(path.ToList().ConvertAll(x => new Vector2I(x[0], x[1])));
 
         // Update the path for the player
         if (IsClientPlayer(playerId)) {
             ClientPlayer clientPlayer = (ClientPlayer)player;
-            clientPlayer.HandleNewPathCreated(path, nullableId);
+            clientPlayer.ApplyServerReconciliation(vectorPath, nullableId);
         } else {
-            player.AddPathFromArray(path);
+            player.AddPathFromArray(vectorPath);
         }
     }
 
