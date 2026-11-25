@@ -114,7 +114,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         _clientSimulation = new ClientSimulation(_worldInfo.CurrentTick, _worldInfo.TicksPerSecond, HandleTick);
         _pathfindingService = new PathfindingService(
             columns: _worldInfo.WorldSizeX * _worldInfo.ChunkSizeX,
-            rows: _worldInfo.WorldSizeY * _worldInfo.ChunkSizeX
+            rows: _worldInfo.WorldSizeY * _worldInfo.ChunkSizeX,
+            cellSize: _worldInfo.CellSize
         );
         GD.Print("World info: " + _worldInfo);
 
@@ -261,11 +262,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             );
             AddChild(chunkNode);
 
-            for (int y = 0; y < _worldInfo.ChunkSizeY / Tile.TileSize.Y; y++) {
-                for (int x = 0; x < _worldInfo.ChunkSizeX / Tile.TileSize.X; x++) {
+            for (int y = 0; y < _worldInfo.ChunkSizeY / _worldInfo.CellSize; y++) {
+                for (int x = 0; x < _worldInfo.ChunkSizeX / _worldInfo.CellSize; x++) {
                     Vector2I tileClientPosition = new(
-                        chunkServerPosition.X + (x * Tile.TileSize.X),
-                        chunkServerPosition.Y + (y * Tile.TileSize.Y)
+                        chunkServerPosition.X + (x * _worldInfo.CellSize),
+                        chunkServerPosition.Y + (y * _worldInfo.CellSize)
                     );
 
                     MeshInstance3D tileMesh = _tileScene.Instantiate<MeshInstance3D>();
@@ -276,21 +277,22 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
                             tileClientPosition.Y
                         ));
                     DebugApplyColorToGroundBasedOnChunkId(tileMesh, worldChunk.ChunkId);
-                    if (x == _worldInfo.ChunkSizeX / Tile.TileSize.X / 2 &&
-                        y == _worldInfo.ChunkSizeY / Tile.TileSize.Y / 2) {
+                    if (x == _worldInfo.ChunkSizeX / _worldInfo.CellSize / 2 &&
+                        y == _worldInfo.ChunkSizeY / _worldInfo.CellSize / 2) {
                         DebugCreateChunkLabel(tileMesh, worldChunk.ChunkId);
                     }
 
-                    chunkNode.AddChild(tileMesh);
-
                     Tile groundTile = tileMesh as Node as Tile ??
                                       throw new InvalidOperationException("Ground is not a Tile!");
+                    groundTile.TileSize = new Vector2I(_worldInfo.CellSize, _worldInfo.CellSize);
                     groundTile.ServerPosition = tileClientPosition;
                     groundTile.WorldChunk = worldChunk;
                     groundTile.OnTileClicked += GroundTileOnOnTileClicked;
 #if DEBUG
                     groundTile.DebugCreateLabel();
 #endif
+                    chunkNode.AddChild(
+                        tileMesh); // Make sure to do this after setting up the tile (SetSize() must be called after TileSize is set)
                     worldChunk.Tiles.Add(groundTile);
                 }
             }
@@ -374,11 +376,12 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
 
         GD.Print($"Creating player {playerId} at ({playerPosition.X},{playerPosition.Y}) in chunk {chunkId}...");
 
-        Node3D playerNode = Player.CreatePlayerNode(
+        PlayerNode playerNode = Player.CreatePlayerNode(
             playerPosition,
             GetNode<Node>("/root/World/Players"),
             playerId,
-            playerName
+            playerName,
+            _worldInfo.TicksPerSecond
         );
 
         playerObj = new Player(playerId, playerName, playerNode);
@@ -442,7 +445,8 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
         GD.Print(
             $"Updating player {player.Id} from ({player.Position.X},{player.Position.Y}) to ({posX},{posY})...");
 
-        player.Position = new Vector2I(posX, posY);
+        // player.Position = new Vector2I(posX, posY);
+        player.UpdatePosition(new Vector2I(posX, posY));
     }
 
     /// <summary>
@@ -527,11 +531,11 @@ public partial class World : Node3D, IRealtimeUpdatesClient {
             // GD.Print($"Player position: {debugPlayerPositionMessage?.X}, {debugPlayerPositionMessage?.Y}");
             if (debugPlayerPositionMessage != null) {
                 DebugDraw3D.DrawCapsule(
-                    new Vector3(debugPlayerPositionMessage.X, 0, debugPlayerPositionMessage.Y),
+                    new Vector3(debugPlayerPositionMessage.X, 1, debugPlayerPositionMessage.Y),
                     Quaternion.Identity,
                     0.5f,
                     2.0f,
-                    new Color(1, 0, 0),
+                    new Color(0, 0, 0.7f),
                     1.0f);
             }
         }

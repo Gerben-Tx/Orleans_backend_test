@@ -11,7 +11,8 @@ public class PathfindingService : IPathfindingService {
     public PathfindingService() {
         _pathfindingService = new Shared.Pathfinding.PathfindingService(
             columns: IWorldChunkGrain.WorldSizeX * IWorldChunkGrain.SizeX,
-            rows: IWorldChunkGrain.WorldSizeY * IWorldChunkGrain.SizeY
+            rows: IWorldChunkGrain.WorldSizeY * IWorldChunkGrain.SizeY,
+            cellSize: IWorldChunkGrain.CellSize
         );
     }
 

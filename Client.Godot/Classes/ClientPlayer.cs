@@ -24,7 +24,7 @@ public class ClientPlayer : Player {
     public ClientPlayer(
         string id,
         string name,
-        Node3D playerNode,
+        PlayerNode playerNode,
         ClientSimulation clientSimulation,
         PathfindingService pathfindingService
     ) : base(id, name, playerNode) {
@@ -163,13 +163,29 @@ public class ClientPlayer : Player {
 
             // Predicted path doesn't match server path, override path with server path
             GD.Print("Predicted path doesn't match server path, override path with server path");
+#if DEBUG
+            DebugDraw2D.Config.TextBlockOffset = new Vector2I(
+                (int)PlayerNode.GetViewport().GetVisibleRect().Size.X / 2,
+                (int)PlayerNode.GetViewport().GetVisibleRect().Size.Y / 2);
+            DebugDraw2D.SetText("Overriding path!", duration: 3);
+#endif
             PredictedPath = null;
-            AddPathFromArray(serverPathSliced);
+            // AddPathFromArray(serverPathSliced);
+            AddPathFromArray(serverPath);
+            // TODO: Using `serverPath` causes way more teleporting compared to using `serverPathSliced`
+            //  This is expected because that path is usually longer than the sliced path.
+            //  But do we really want the longer path? 
+            //  I think so.. otherwise we might be following an "illegal" path which has the same destination
+            //  So how would we solve the issue of teleporting back?
+            //  Should we wait in place like suggested below?
 
             break;
         }
 
         // TODO: if we are more than X points away from the server pos, we should teleport back / wait in place
+        //  For this we need to know what the current server position is.
+        //  We could determine this from the server path, since it starts from the current position (or close to it).
+        //  If our current position is more than X points away from the server path start, we should teleport back / wait in place.
 
         // TODO: should we update the CachedPath with the server path if all vectors match?
 

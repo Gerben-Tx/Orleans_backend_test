@@ -5,6 +5,7 @@ public sealed record WorldInfoMessage(
     int WorldSizeY,
     int ChunkSizeX,
     int ChunkSizeY,
+    int CellSize,
     ulong CurrentTick,
     uint TicksPerSecond
 );

@@ -6,7 +6,7 @@ public class ClientSimulation {
     /// <summary>
     /// The offset between the server ticks and the client ticks. This is needed to make sure the client is always running in the future.
     /// This accounts for potentially laggy clients.
-    /// // TODO: this should be calculated by the server?
+    /// // TODO: this should be calculated by the server because it is unique per client (lag calculation)
     /// </summary>
     private const int TickOffset = 10;
 

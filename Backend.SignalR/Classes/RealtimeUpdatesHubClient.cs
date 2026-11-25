@@ -174,6 +174,7 @@ public class RealtimeUpdatesHubClient : RealtimeUpdatesHub<IRealtimeUpdatesClien
             IWorldChunkGrain.WorldSizeY,
             IWorldChunkGrain.SizeX,
             IWorldChunkGrain.SizeY,
+            IWorldChunkGrain.CellSize,
             await tickGrain.GetTicks(),
             await tickGrain.GetTicksPerSecond()
         );

@@ -8,17 +8,18 @@ namespace Client.Godot.Classes;
 public class Player {
     public string Id { get; private set; }
     public string Name { get; private set; }
-    public Node3D PlayerNode { get; private set; }
-    public Vector2I Position {
-        get => new((int)PlayerNode.Position.X, (int)PlayerNode.Position.Z);
-        set => PlayerNode.Position = new Vector3(value.X, PlayerNode.Position.Y, value.Y);
-    } // Small wrapper around the PlayerNode.Position to be able to use vector2 in 3d space
+    public PlayerNode PlayerNode { get; private set; }
+    public Vector2I Position =>
+        new(
+            (int)PlayerNode.Position.X,
+            (int)PlayerNode.Position.Z
+        ); // Small wrapper around the PlayerNode.Position to be able to use vector2 in 3d space
     protected Queue<Vector2I>? Path { get; set; }
 
     public Player(
         string id,
         string name,
-        Node3D playerNode
+        PlayerNode playerNode
     ) {
         Id = id;
         Name = name;
@@ -45,21 +46,29 @@ public class Player {
         Path = new(path.ToList().ConvertAll(x => new Vector2I(x[0], x[1])));
     }
 
-    public static Node3D CreatePlayerNode(
+    public static PlayerNode CreatePlayerNode(
         Vector2 playerPosition,
         Node playersNode,
         string id,
-        string name
+        string name,
+        uint serverTicksPerSecond
     ) {
         PackedScene playerScene = GD.Load<PackedScene>("res://Player.tscn");
         // Node playersNode = GetNode<Node>("%Players");
-        Node3D playerNode = playerScene.Instantiate<Node3D>();
+        PlayerNode playerNode = playerScene.Instantiate<PlayerNode>();
         playerNode.Name = id;
         playerNode.Position = new Vector3(playerPosition.X, 0, playerPosition.Y);
         playerNode.GetNode<Label3D>("%PlayerNameLabel").Text = name;
         playersNode.AddChild(playerNode);
         playerNode.Owner = playersNode;
+        playerNode.SetTicksPerSecond(serverTicksPerSecond);
 
         return playerNode;
+    }
+
+    public void UpdatePosition(
+        Vector2I position
+    ) {
+        PlayerNode.UpdatePosition(position);
     }
 }
