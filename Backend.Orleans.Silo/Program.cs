@@ -49,7 +49,11 @@ using IHost host = new HostBuilder()
                     .AddFilter("Backend.Orleans", LogLevel.Debug) // Enable debug logging only for our loggers
                     .AddFilter("Microsoft.AspNetCore.SignalR", LogLevel.Debug)
                     .AddFilter("Microsoft.AspNetCore.Http.Connections", LogLevel.Debug);
-                logging.AddConsole();
+                logging.AddSimpleConsole(options => {
+                    options.IncludeScopes = true;
+                    options.TimestampFormat = "[HH:mm:ss.fff zzz] ";
+                    options.SingleLine = true;
+                });
             })
             .Configure<GrainCollectionOptions>(options => {
                 options.CollectionQuantum = TimeSpan.FromSeconds(10);

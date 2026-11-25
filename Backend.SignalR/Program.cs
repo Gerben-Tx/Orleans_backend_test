@@ -22,6 +22,11 @@ builder.Services
     .AddSignalR();
 // .AddOrleans();
 builder.Logging.AddFilter("Backend.SignalR", LogLevel.Debug);
+builder.Logging.AddSimpleConsole(options => {
+    options.IncludeScopes = true;
+    options.TimestampFormat = "[HH:mm:ss.fff zzz] ";
+    options.SingleLine = true;
+});
 
 var app = builder.Build();
 app.MapHub<RealtimeUpdatesHubClient>("/realtimeUpdatesHubClient");
